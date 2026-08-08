@@ -39,7 +39,7 @@
          border-radius:34px;box-shadow:0 24px 60px rgba(80,50,160,.35);border:1px solid rgba(255,255,255,.6)}
   @media(max-width:460px){ body{background:var(--bg)} .frame{height:100dvh;max-width:100vw;border-radius:0;box-shadow:none;border:none} }
   #app{position:absolute;inset:0;display:flex;flex-direction:column;overflow:hidden}
-  .scr{flex:1;display:flex;flex-direction:column;overflow:hidden;animation:popIn .2s ease}
+  .scr{flex:1;display:flex;flex-direction:column;overflow:hidden}
   .scroll{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch}
 
   .stripe{height:14px}
@@ -299,8 +299,12 @@ const PANTS=[
 const PARENT_HATS=[{value:'',title:'Ingen',cost:0},{value:'👓',title:'Briller',cost:0},{value:'🕶️',title:'Solbriller',cost:0}].concat(HATS.slice(1));
 const KID_COLORS=['#7C4DFF','#FF6B4A','#2EB8A6','#E0468A','#F4A93B'];
 const DAYS=['søndag','mandag','tirsdag','onsdag','torsdag','fredag','lørdag'];
-const REPEAT_LABEL={once:'Engang',daily:'Hver dag',weekly:'Ugentligt',biweekly:'Hver 2. uge',monthly:'Månedligt'};
-const REPEAT_ORDER=['once','daily','weekly','biweekly','monthly'];
+const DAY_SHORT=['Søn','Man','Tir','Ons','Tor','Fre','Lør'];
+const WEEKDAY_ORDER=[1,2,3,4,5,6,0];
+const REPEAT_LABEL={once:'Engang',daily:'Hver dag',weekdays:'Bestemte dage',weekly:'Ugentligt',biweekly:'Hver 2. uge',monthly:'Månedligt'};
+const REPEAT_ORDER=['once','daily','weekdays','weekly','biweekly','monthly'];
+const RESET_LABEL={daily:'Hver dag',weekly:'Ugentligt',once:'Én gang'};
+const RESET_ORDER=['daily','weekly','once'];
 const TASK_EMOJIS=['🛏️','🦷','🍽️','📚','🧹','🐕','🚿','👕','🧦','🗑️','🪥','🍳','🧸','✏️','⚽','🎹','🌱','🧼','🛒','🧺','🚲','📖','🎨','🧽'];
 const REWARD_EMOJIS=['🎬','🍕','🍦','📱','🛌','🎮','🍭','🎡','🏊','🎳','🍿','🎁','💤','🧁','🎢','🚗','⭐','🐾','📺','🎯','🍔','🛼'];
 
@@ -312,8 +316,10 @@ function normalize(s){
   s=s||{}; s.seq=s.seq||1; s.parents=s.parents||[]; s.kids=s.kids||[]; s.tasks=s.tasks||[]; s.rewards=s.rewards||[];
   s.notifications=s.notifications||[]; s.notifyCategories=s.notifyCategories||{Oplevelser:true,Privilegier:true,Avatar:true};
   if(s.currentKidId===undefined)s.currentKidId=null;
-  s.tasks.forEach(t=>{if(t.assignMode==null){t.assignMode='age';t.minAge=2;t.maxAge=18;} if(t.kidIds==null)t.kidIds=[];});
+  s.tasks.forEach(t=>{if(t.assignMode==null){t.assignMode='age';t.minAge=2;t.maxAge=18;} if(t.kidIds==null)t.kidIds=[]; if(t.weekdays==null)t.weekdays=[];});
+  s.rewards.forEach(r=>{if(r.reset==null)r.reset='daily';});
   s.parents.forEach(p=>{if(p.bodyColor==null)p.bodyColor='#B8C7F0'; if(p.hat==null)p.hat='👓'; if(p.pants==null)p.pants='';});
+  s.kids.forEach(k=>{if(k.redeemed==null)k.redeemed={};});
   return s;
 }
 function load(){ try{const v=localStorage.getItem(KEY); return v?JSON.parse(v):null;}catch(e){return null;} }
@@ -323,21 +329,21 @@ function uid(p){ state.seq=(state.seq||1)+1; return p+state.seq; }
 function seedDefaults(){
   if(state.tasks.length===0){
     state.tasks=[
-      {id:uid('t'),icon:'🛏️',title:'Red din seng',points:5,repeat:'daily',active:true,assignMode:'age',minAge:2,maxAge:18,kidIds:[]},
-      {id:uid('t'),icon:'🦷',title:'Børst tænder',points:5,repeat:'daily',active:true,assignMode:'age',minAge:2,maxAge:18,kidIds:[]},
-      {id:uid('t'),icon:'🍽️',title:'Tøm opvaskemaskinen',points:10,repeat:'daily',active:true,assignMode:'age',minAge:6,maxAge:18,kidIds:[]},
-      {id:uid('t'),icon:'📚',title:'Læs 15 minutter',points:8,repeat:'daily',active:true,assignMode:'age',minAge:2,maxAge:18,kidIds:[]},
-      {id:uid('t'),icon:'🧹',title:'Ryd op på værelset',points:10,repeat:'weekly',active:true,assignMode:'age',minAge:2,maxAge:18,kidIds:[]}
+      {id:uid('t'),icon:'🛏️',title:'Red din seng',points:5,repeat:'daily',active:true,assignMode:'age',minAge:2,maxAge:18,kidIds:[],weekdays:[]},
+      {id:uid('t'),icon:'🦷',title:'Børst tænder',points:5,repeat:'daily',active:true,assignMode:'age',minAge:2,maxAge:18,kidIds:[],weekdays:[]},
+      {id:uid('t'),icon:'🍽️',title:'Tøm opvaskemaskinen',points:10,repeat:'daily',active:true,assignMode:'age',minAge:6,maxAge:18,kidIds:[],weekdays:[]},
+      {id:uid('t'),icon:'📚',title:'Læs 15 minutter',points:8,repeat:'daily',active:true,assignMode:'age',minAge:2,maxAge:18,kidIds:[],weekdays:[]},
+      {id:uid('t'),icon:'🎒',title:'Lav lektier',points:10,repeat:'weekdays',active:true,assignMode:'age',minAge:6,maxAge:18,kidIds:[],weekdays:[1,2,3,4]}
     ];
   }
   if(state.rewards.length===0){
     state.rewards=[
-      {id:uid('r'),icon:'🎬',title:'Biograftur',cost:120,category:'Oplevelser',active:true},
-      {id:uid('r'),icon:'🍕',title:'Vælg aftensmad',cost:60,category:'Oplevelser',active:true},
-      {id:uid('r'),icon:'🍦',title:'Is-tur',cost:40,category:'Oplevelser',active:true},
-      {id:uid('r'),icon:'📱',title:'30 min ekstra skærmtid',cost:40,category:'Privilegier',active:true},
-      {id:uid('r'),icon:'🛌',title:'Sengetid +30 min',cost:50,category:'Privilegier',active:true},
-      {id:uid('r'),icon:'🎮',title:'30 min gaming',cost:40,category:'Privilegier',active:true}
+      {id:uid('r'),icon:'🎬',title:'Biograftur',cost:120,category:'Oplevelser',reset:'once',active:true},
+      {id:uid('r'),icon:'🍕',title:'Vælg aftensmad',cost:60,category:'Oplevelser',reset:'weekly',active:true},
+      {id:uid('r'),icon:'🍦',title:'Is-tur',cost:40,category:'Oplevelser',reset:'weekly',active:true},
+      {id:uid('r'),icon:'📱',title:'30 min ekstra skærmtid',cost:40,category:'Privilegier',reset:'daily',active:true},
+      {id:uid('r'),icon:'🛌',title:'Sengetid +30 min',cost:50,category:'Privilegier',reset:'daily',active:true},
+      {id:uid('r'),icon:'🎮',title:'30 min gaming',cost:40,category:'Privilegier',reset:'daily',active:true}
     ];
   }
   save();
@@ -351,12 +357,13 @@ function weekIx(d){return Math.floor(Date.UTC(d.getFullYear(),d.getMonth(),d.get
 function periodKey(rep){
   const d=new Date();
   if(rep==='once')return 'once';
-  if(rep==='daily')return 'd'+dstr(d);
+  if(rep==='daily'||rep==='weekdays')return 'd'+dstr(d);
   if(rep==='monthly')return 'm'+d.getFullYear()+pad(d.getMonth()+1);
   if(rep==='weekly')return 'w'+weekIx(d);
   if(rep==='biweekly')return 'b'+Math.floor(weekIx(d)/2);
   return 'd'+dstr(d);
 }
+function rewardPeriodKey(reset){const d=new Date();if(reset==='once')return 'once';if(reset==='weekly')return 'w'+weekIx(d);return 'd'+dstr(d);}
 function relTime(ts){
   const s=Math.floor((Date.now()-ts)/1000);
   if(s<60)return 'lige nu'; if(s<3600)return Math.floor(s/60)+' min siden';
@@ -375,9 +382,13 @@ function taskAppliesTo(kid,t){
   const mn=t.minAge==null?0:t.minAge, mx=t.maxAge==null?99:t.maxAge;
   return kid.age>=mn && kid.age<=mx;
 }
+function taskActiveToday(t){if(t.repeat==='weekdays'){return (t.weekdays||[]).includes(new Date().getDay());}return true;}
 function tasksForKid(kid){return activeTasks().filter(t=>taskAppliesTo(kid,t));}
+function tasksForKidToday(kid){return tasksForKid(kid).filter(taskActiveToday);}
+function weekdayLabel(t){const w=t.weekdays||[];if(!w.length)return 'Vælg dage';return WEEKDAY_ORDER.filter(d=>w.includes(d)).map(d=>DAY_SHORT[d]).join(', ');}
 function taskDone(kid,t){return kid.completed && kid.completed[t.id]===periodKey(t.repeat);}
-function allDone(kid){const a=tasksForKid(kid);return a.length>0 && a.every(t=>taskDone(kid,t));}
+function allDone(kid){const a=tasksForKidToday(kid);return a.length>0 && a.every(t=>taskDone(kid,t));}
+function redeemedNow(k,r){return (k.redeemed||{})[r.id]===rewardPeriodKey(r.reset||'daily');}
 function ownedList(k,kind){return kind==='color'?k.ownedColors:kind==='hat'?k.ownedHats:k.ownedPants;}
 function esc(s){return (s==null?'':''+s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
 function assignSummary(t){
@@ -390,6 +401,7 @@ function assignSummary(t){
 /* ===== Render ===== */
 const app=document.getElementById('app');
 function render(){
+  const same=ui._rendered===ui.screen; const _sc=app.querySelector('.scroll'); const _st=(same&&_sc)?_sc.scrollTop:0;
   let h='';
   if(ui.screen==='welcome')h=welcomeScreen();
   else if(ui.screen==='picker')h=pickerScreen();
@@ -399,7 +411,10 @@ function render(){
   else if(ui.screen==='editor')h=editorScreen();
   else if(ui.screen==='pavatar')h=pavatarScreen();
   else if(ui.screen==='parent')h=parentScreen();
-  app.innerHTML=h; renderOverlay();
+  app.innerHTML=h;
+  const _sc2=app.querySelector('.scroll'); if(_sc2)_sc2.scrollTop=_st;
+  ui._rendered=ui.screen;
+  renderOverlay();
 }
 function scallops(c1,c2){let s='';for(let i=0;i<34;i++){s+=`<i style="background:${i%2?c2:c1}"></i>`;}return s;}
 function bannerHTML(c1,c2){
@@ -443,11 +458,11 @@ function pickerScreen(){
 }
 function homeScreen(){
   const k=currentKid(); if(!k){ui.screen='picker';return pickerScreen();}
-  const tasks=[...tasksForKid(k)].sort((a,b)=>(taskDone(k,a)?1:0)-(taskDone(k,b)?1:0));
-  const rows=tasks.map(t=>{const d=taskDone(k,t);return `
+  const tasks=[...tasksForKidToday(k)].sort((a,b)=>(taskDone(k,a)?1:0)-(taskDone(k,b)?1:0));
+  const rows=tasks.map(t=>{const d=taskDone(k,t);const fr=t.repeat==='weekdays'?weekdayLabel(t):(REPEAT_LABEL[t.repeat]||'');return `
     <div class="task ${d?'done':''}" onclick="toggleTask('${t.id}',event)">
       <div class="ic" style="background:${['#EFE9FF','#E3FBF6','#FFEDE3','#FFF6D8','#FFE8F1','#E7F3FF'][state.tasks.indexOf(t)%6]}">${t.icon}</div>
-      <div class="tx"><div class="tt">${esc(t.title)}</div><div class="fr">${REPEAT_LABEL[t.repeat]||''}</div></div>
+      <div class="tx"><div class="tt">${esc(t.title)||'Opgave'}</div><div class="fr">${fr}</div></div>
       <div class="pts">+${t.points}</div><div class="check">${d?'✓':''}</div>
     </div>`;}).join('');
   const gold=(k.dailyBonusClaimed===todayKey())?`<div class="goldbar">🌟 Du har klaret hele dagen! +15 bonuspoint</div>`:'';
@@ -465,7 +480,7 @@ function homeScreen(){
       ${msg}${gold}
       <div class="sec">
         <div class="sec-h" onclick="toggleTasks()"><h3>Opgaver</h3><span class="cv">${ui.tasksOpen?'▾':'▸'}</span></div>
-        <div style="display:${ui.tasksOpen?'block':'none'}">${rows||'<div class="hint" style="padding:16px">Ingen opgaver til dig lige nu 🎉</div>'}</div>
+        <div style="display:${ui.tasksOpen?'block':'none'}">${rows||'<div class="hint" style="padding:16px">Ingen opgaver til dig i dag 🎉</div>'}</div>
       </div>
       <div class="hint">Tryk på en opgave for at løse den ✨ — tryk igen for at fortryde</div>
     </div>
@@ -473,12 +488,12 @@ function homeScreen(){
   </div>`;
 }
 function rewardRow(k,r){
-  const today=k.redeemedToday&&k.redeemedToday[r.id]===todayKey();
+  const done=redeemedNow(k,r);
   let btn;
-  if(today)btn=`<button class="buy today" disabled>Købt i dag ✓</button>`;
+  if(done){const lbl=(r.reset==='once')?'Ejet ✓':(r.reset==='weekly')?'Købt ✓':'Købt i dag ✓';btn=`<button class="buy today" disabled>${lbl}</button>`;}
   else if(k.points<r.cost)btn=`<button class="buy short" disabled>Mangler ${r.cost-k.points}</button>`;
   else btn=`<button class="buy" onclick="askRedeem('reward','${r.id}')">Indløs</button>`;
-  return `<div class="reward"><div class="ic">${r.icon}</div><div class="tt">${esc(r.title)}</div><div class="cost">🪙 ${r.cost}</div>${btn}</div>`;
+  return `<div class="reward"><div class="ic">${r.icon}</div><div class="tt">${esc(r.title)||'Præmie'}</div><div class="cost">🪙 ${r.cost}</div>${btn}</div>`;
 }
 function cosmeticRow(k,item,kind){
   const owned=ownedList(k,kind).includes(item.value);
@@ -532,7 +547,6 @@ function editorScreen(){
       <div class="grid-h">Bukser</div><div class="grid">${itemGrid(k,PANTS,'pants',k.pants)}</div>
       <div class="hint" style="padding:16px 0 22px">Låste ting 🔒 køber du i butikken</div></div></div>`;
 }
-/* Forælder-avatar (alt låst op) */
 function parentGrid(p,arr,kind,cur){
   return arr.map(it=>{
     const sel=cur===it.value;
@@ -574,21 +588,23 @@ function tabOpgaver(){
   const rows=state.tasks.map(t=>{
     const open=ui.editId===t.id; const amode=t.assignMode||'age';
     const assign=amode==='age'
-      ? `<div class="agebox"><div class="col"><label class="fld">Fra alder</label><div class="stp"><button onclick="setMinAge('${t.id}',-1)">−</button><span>${t.minAge==null?2:t.minAge}</span><button onclick="setMinAge('${t.id}',1)">＋</button></div></div><div class="col"><label class="fld">Til alder</label><div class="stp"><button onclick="setMaxAge('${t.id}',-1)">−</button><span>${t.maxAge==null?18:t.maxAge}</span><button onclick="setMaxAge('${t.id}',1)">＋</button></div></div></div>`
-      : `<div class="chips">${state.kids.length? state.kids.map(k=>`<button class="chip2 ${(t.kidIds||[]).includes(k.id)?'on':''}" onclick="toggleKidAssign('${t.id}','${k.id}')">${esc(k.name)}</button>`).join('') : '<div class="hint" style="padding:6px 0;text-align:left">Tilføj børn i Børn-fanen først</div>'}</div>`;
+      ? `<div class="agebox" style="margin-top:10px"><div class="col"><label class="fld">Fra alder</label><div class="stp"><button onclick="setMinAge('${t.id}',-1)">−</button><span>${t.minAge==null?2:t.minAge}</span><button onclick="setMinAge('${t.id}',1)">＋</button></div></div><div class="col"><label class="fld">Til alder</label><div class="stp"><button onclick="setMaxAge('${t.id}',-1)">−</button><span>${t.maxAge==null?18:t.maxAge}</span><button onclick="setMaxAge('${t.id}',1)">＋</button></div></div></div>`
+      : `<div class="chips" style="margin-top:10px">${state.kids.length? state.kids.map(k=>`<button class="chip2 ${(t.kidIds||[]).includes(k.id)?'on':''}" onclick="toggleKidAssign('${t.id}','${k.id}')">${esc(k.name)}</button>`).join('') : '<div class="hint" style="padding:6px 0;text-align:left">Tilføj børn i Børn-fanen først</div>'}</div>`;
+    const freq=t.repeat==='weekdays'?weekdayLabel(t):REPEAT_LABEL[t.repeat];
     return `<div class="adm">
       <div class="adm-h">
         <button class="adm-ic" onclick="pickEmoji('task','${t.id}')">${t.icon}</button>
-        <div class="adm-tt" onclick="toggleEdit('${t.id}')">${esc(t.title)}<div class="adm-sub">${t.points} point · ${REPEAT_LABEL[t.repeat]}${assignSummary(t)}</div></div>
+        <div class="adm-tt" onclick="toggleEdit('${t.id}')">${t.title?esc(t.title):'<span style="color:var(--muted3)">Ny opgave…</span>'}<div class="adm-sub">${t.points} point · ${freq}${assignSummary(t)}</div></div>
         <label class="sw"><input type="checkbox" ${t.active!==false?'checked':''} onchange="setTaskActive('${t.id}',this.checked)"><span></span></label>
         <button class="del" onclick="delTask('${t.id}')">✕</button>
       </div>
       ${open?`<div class="adm-body">
-        <label class="fld">Titel</label><input class="txt" value="${esc(t.title)}" onchange="setTaskTitle('${t.id}',this.value)">
+        <label class="fld">Titel</label><input class="txt" value="${esc(t.title)}" placeholder="Skriv en titel, fx Red din seng" onchange="setTaskTitle('${t.id}',this.value)">
         <label class="fld">Point <span style="font-weight:400">(klik på tallet for at skrive)</span></label>
         <div class="stp"><button onclick="setTaskPoints('${t.id}',-1)">−</button><input class="numin" inputmode="numeric" value="${t.points}" onchange="setTaskPointsVal('${t.id}',this.value)"><button onclick="setTaskPoints('${t.id}',1)">＋</button></div>
         <label class="fld">Gentagelse</label>
         <div class="chips">${REPEAT_ORDER.map(r=>`<button class="chip2 ${t.repeat===r?'on':''}" onclick="setRepeat('${t.id}','${r}')">${REPEAT_LABEL[r]}</button>`).join('')}</div>
+        ${t.repeat==='weekdays'?`<div class="chips" style="margin-top:8px">${WEEKDAY_ORDER.map(d=>`<button class="chip2 ${(t.weekdays||[]).includes(d)?'on':''}" onclick="toggleWeekday('${t.id}',${d})">${DAY_SHORT[d]}</button>`).join('')}</div>`:''}
         <label class="fld">Tildel til</label>
         <div class="seg"><button class="${amode==='age'?'on':''}" onclick="setAssignMode('${t.id}','age')">Efter alder</button><button class="${amode==='kids'?'on':''}" onclick="setAssignMode('${t.id}','kids')">Bestemte børn</button></div>
         ${assign}
@@ -604,16 +620,18 @@ function tabPraemier(){
     return `<div class="adm">
       <div class="adm-h">
         <button class="adm-ic" onclick="pickEmoji('reward','${r.id}')">${r.icon}</button>
-        <div class="adm-tt" onclick="toggleEditR('${r.id}')">${esc(r.title)}<div class="adm-sub">${r.cost} 🪙 · ${r.category}</div></div>
+        <div class="adm-tt" onclick="toggleEditR('${r.id}')">${r.title?esc(r.title):'<span style="color:var(--muted3)">Ny præmie…</span>'}<div class="adm-sub">${r.cost} 🪙 · ${r.category} · ${RESET_LABEL[r.reset||'daily']}</div></div>
         <label class="sw"><input type="checkbox" ${r.active!==false?'checked':''} onchange="setRewardActive('${r.id}',this.checked)"><span></span></label>
         <button class="del" onclick="delReward('${r.id}')">✕</button>
       </div>
       ${open?`<div class="adm-body">
-        <label class="fld">Titel</label><input class="txt" value="${esc(r.title)}" onchange="setRewardTitle('${r.id}',this.value)">
+        <label class="fld">Titel</label><input class="txt" value="${esc(r.title)}" placeholder="Skriv en titel, fx Biograftur" onchange="setRewardTitle('${r.id}',this.value)">
         <label class="fld">Pris <span style="font-weight:400">(klik på tallet for at skrive)</span></label>
         <div class="stp"><button onclick="setRewardCost('${r.id}',-5)">−</button><input class="numin" inputmode="numeric" value="${r.cost}" onchange="setRewardCostVal('${r.id}',this.value)"><button onclick="setRewardCost('${r.id}',5)">＋</button></div>
         <label class="fld">Kategori</label>
         <div class="catpick"><div class="opt ${r.category==='Oplevelser'?'sel':''}" onclick="setRewardCat('${r.id}','Oplevelser')"><span class="rd">✓</span> 🎉 Oplevelser</div><div class="opt ${r.category==='Privilegier'?'sel':''}" onclick="setRewardCat('${r.id}','Privilegier')"><span class="rd">✓</span> ⭐ Privilegier</div></div>
+        <label class="fld">Kan indløses</label>
+        <div class="chips">${RESET_ORDER.map(rs=>`<button class="chip2 ${(r.reset||'daily')===rs?'on':''}" onclick="setRewardReset('${r.id}','${rs}')">${RESET_LABEL[rs]}</button>`).join('')}</div>
         <button class="btn" style="margin-top:16px;width:100%" onclick="toggleEditR('${r.id}')">Færdig</button>
       </div>`:''}
     </div>`;
@@ -685,14 +703,14 @@ function pinOverlay(o){
 function addChildOverlay(o){
   return `<div class="backdrop"><div class="sheet"><h3>Tilføj barn</h3>
     <label class="fld">Navn</label><input class="txt" value="${esc(o.name||'')}" placeholder="Barnets navn" oninput="ui.overlay.name=this.value">
-    <label class="fld">Alder</label><div class="agerow"><button onclick="chAge(-1)">−</button><div class="av">${o.age} år</div><button onclick="chAge(1)">＋</button></div>
+    <label class="fld">Alder</label><div class="agerow"><button onclick="chAge(-1)">−</button><div class="av" id="addAge">${o.age} år</div><button onclick="chAge(1)">＋</button></div>
     <div class="err" style="color:var(--coral-tx)">${o.error||''}</div>
     <div class="rowbtns"><button class="btn ghost" onclick="closeOverlay()">Annullér</button><button class="btn" onclick="confirmAddChild()">Opret</button></div></div></div>`;
 }
 function confirmOverlay(o){
   const k=currentKid();
   const ico=o.kind==='reward'?o.item.icon:avatarHTML(o.kind==='color'?{size:66,bodyColor:o.item.value,hat:k.hat,pants:k.pants}:o.kind==='hat'?{size:66,bodyColor:k.bodyColor,hat:o.item.value,pants:k.pants}:{size:66,bodyColor:k.bodyColor,hat:k.hat,pants:o.item.value});
-  return `<div class="backdrop"><div class="sheet confirm"><div class="cico">${ico}</div><h3>${esc(o.item.title)}</h3>
+  return `<div class="backdrop"><div class="sheet confirm"><div class="cico">${ico}</div><h3>${esc(o.item.title)||'Præmie'}</h3>
     <div class="line">Du har ${k.points} 🪙</div><div class="cost2">Denne koster ${o.item.cost} 🪙</div>
     <div class="cbtns"><button class="no" onclick="closeOverlay()">✕</button><button class="yes" onclick="doRedeem()">✓</button></div></div></div>`;
 }
@@ -733,7 +751,6 @@ function toggleTask(id,ev){
   }
 }
 
-/* parent setup */
 function startParentSetup(){ui.overlay={type:'setup',step:'name',name:'',pin1:'',pin2:'',error:''};renderOverlay();}
 function startAddParent(){ui.overlay={type:'setup',step:'name',name:'',pin1:'',pin2:'',error:'',addMode:true};renderOverlay();}
 function setSetupName(n){ui.overlay.name=n;const el=document.getElementById('pname');if(el)el.value=n;}
@@ -766,20 +783,19 @@ function enterPin(d){
   }
 }
 function startAddChild(){ui.overlay={type:'addChild',name:'',age:6,error:''};renderOverlay();}
-function chAge(d){ui.overlay.age=Math.max(2,Math.min(17,ui.overlay.age+d));renderOverlay();}
+function chAge(d){ui.overlay.age=Math.max(2,Math.min(17,ui.overlay.age+d));const el=document.getElementById('addAge');if(el)el.textContent=ui.overlay.age+' år';}
 function confirmAddChild(){
   const o=ui.overlay; const nm=(o.name||'').trim(); if(!nm){o.error='Skriv et navn';renderOverlay();return;}
   const idx=state.kids.length;
   const k={id:uid('k'),name:nm,age:o.age,color:KID_COLORS[idx%KID_COLORS.length],points:0,totalEarned:0,
     bodyColor:['#FFB6D9','#AEDFF7','#B8E8B0','#FFFFFF'][idx%4],hat:'',pants:'',
     ownedColors:['#FFFFFF','#FFB6D9','#B8E8B0','#AEDFF7'],ownedHats:[''],ownedPants:[''],
-    completed:{},redeemedToday:{},redemptions:[],dailyBonusClaimed:null,message:null};
+    completed:{},redeemed:{},redemptions:[],dailyBonusClaimed:null,message:null};
   state.kids.push(k); ui.overlay=null; save(); if(ui.screen==='welcome')ui.screen='picker'; render(); toast(nm+' er tilføjet 🎈');
 }
 function askDelKid(id){ui.overlay={type:'delkid',kidId:id};renderOverlay();}
 function confirmDelKid(){const id=ui.overlay.kidId;state.kids=state.kids.filter(k=>k.id!==id);if(state.currentKidId===id)state.currentKidId=null;ui.overlay=null;save();render();}
 
-/* redeem */
 function askRedeem(kind,idOrVal){
   const k=currentKid(); let item;
   if(kind==='reward')item=state.rewards.find(r=>r.id===idOrVal);
@@ -791,7 +807,7 @@ function doRedeem(){
   const o=ui.overlay; const k=currentKid(); const from=k.points;
   if(k.points<o.item.cost){closeOverlay();return;}
   k.points-=o.item.cost; const cat=o.kind==='reward'?o.item.category:'Avatar';
-  if(o.kind==='reward'){if(!k.redeemedToday)k.redeemedToday={};k.redeemedToday[o.item.id]=todayKey();}
+  if(o.kind==='reward'){if(!k.redeemed)k.redeemed={};k.redeemed[o.item.id]=rewardPeriodKey(o.item.reset||'daily');}
   else{ownedList(k,o.kind).push(o.item.value);}
   k.redemptions=k.redemptions||[]; k.redemptions.push({icon:o.kind==='reward'?o.item.icon:'🎨',title:o.item.title,cost:o.item.cost,when:Date.now()});
   if(state.notifyCategories[cat]!==false)state.notifications.push({icon:o.kind==='reward'?o.item.icon:'🎨',kidName:k.name,title:o.item.title,cost:o.item.cost,when:Date.now(),category:cat});
@@ -799,40 +815,37 @@ function doRedeem(){
   toast(o.kind==='reward'?'Indløst! 🎉':'Købt! Skift den i Min profil 🎨');
 }
 
-/* editor */
 function equip(kind,val){const k=currentKid();if(kind==='color')k.bodyColor=val;else if(kind==='hat')k.hat=val;else k.pants=val;save();render();}
 function renameKid(v){const k=currentKid();k.name=(v||'').trim()||k.name;save();}
 function toShop(){ui.screen='shop';render();toast('Køb den først i butikken 🍋');}
 function equipParent(kind,val){const p=currentParent();if(kind==='color')p.bodyColor=val;else if(kind==='hat')p.hat=val;else p.pants=val;save();render();}
 function renameParent(v){const p=currentParent();p.name=(v||'').trim()||p.name;save();}
 
-/* parent tabs — tasks */
 function setParentTab(t){ui.parentTab=t;ui.editId=null;ui.editRewardId=null;render();}
-function addTask(){const t={id:uid('t'),icon:'✅',title:'Ny opgave',points:5,repeat:'daily',active:true,assignMode:'age',minAge:2,maxAge:18,kidIds:[]};state.tasks.unshift(t);ui.editId=t.id;save();render();}
+function addTask(){const t={id:uid('t'),icon:'✅',title:'',points:5,repeat:'daily',active:true,assignMode:'age',minAge:2,maxAge:18,kidIds:[],weekdays:[]};state.tasks.unshift(t);ui.editId=t.id;save();render();}
 function toggleEdit(id){ui.editId=ui.editId===id?null:id;render();}
-function setTaskTitle(id,v){const t=state.tasks.find(x=>x.id===id);if(t){t.title=(v||'').trim()||'Opgave';save();render();}}
+function setTaskTitle(id,v){const t=state.tasks.find(x=>x.id===id);if(t){t.title=(v||'').trim();save();render();}}
 function setTaskPoints(id,d){const t=state.tasks.find(x=>x.id===id);if(t){t.points=Math.max(1,t.points+d);save();render();}}
 function setTaskPointsVal(id,v){const t=state.tasks.find(x=>x.id===id);if(t){let n=parseInt(String(v).replace(/[^0-9]/g,''),10);if(isNaN(n))n=1;t.points=Math.max(1,Math.min(9999,n));save();render();}}
 function setTaskActive(id,ch){const t=state.tasks.find(x=>x.id===id);if(t){t.active=ch;save();render();}}
-function setRepeat(id,r){const t=state.tasks.find(x=>x.id===id);if(t){t.repeat=r;save();render();}}
+function setRepeat(id,r){const t=state.tasks.find(x=>x.id===id);if(t){t.repeat=r;if(r==='weekdays'&&(!t.weekdays||!t.weekdays.length))t.weekdays=[1,2,3,4,5];save();render();}}
+function toggleWeekday(id,d){const t=state.tasks.find(x=>x.id===id);if(t){t.weekdays=t.weekdays||[];const i=t.weekdays.indexOf(d);if(i>=0)t.weekdays.splice(i,1);else t.weekdays.push(d);save();render();}}
 function setAssignMode(id,mode){const t=state.tasks.find(x=>x.id===id);if(t){t.assignMode=mode;if(mode==='age'){if(t.minAge==null)t.minAge=2;if(t.maxAge==null)t.maxAge=18;}if(mode==='kids'&&t.kidIds==null)t.kidIds=[];save();render();}}
 function setMinAge(id,d){const t=state.tasks.find(x=>x.id===id);if(t){const mx=t.maxAge==null?18:t.maxAge;t.minAge=Math.max(0,Math.min(mx,(t.minAge==null?2:t.minAge)+d));save();render();}}
 function setMaxAge(id,d){const t=state.tasks.find(x=>x.id===id);if(t){const mn=t.minAge==null?0:t.minAge;t.maxAge=Math.min(18,Math.max(mn,(t.maxAge==null?18:t.maxAge)+d));save();render();}}
 function toggleKidAssign(id,kidId){const t=state.tasks.find(x=>x.id===id);if(t){t.kidIds=t.kidIds||[];const i=t.kidIds.indexOf(kidId);if(i>=0)t.kidIds.splice(i,1);else t.kidIds.push(kidId);save();render();}}
 function delTask(id){state.tasks=state.tasks.filter(x=>x.id!==id);if(ui.editId===id)ui.editId=null;save();render();}
-/* rewards */
-function addReward(){const r={id:uid('r'),icon:'🎁',title:'Ny præmie',cost:50,category:'Privilegier',active:true};state.rewards.unshift(r);ui.editRewardId=r.id;save();render();}
+function addReward(){const r={id:uid('r'),icon:'🎁',title:'',cost:50,category:'Privilegier',reset:'daily',active:true};state.rewards.unshift(r);ui.editRewardId=r.id;save();render();}
 function toggleEditR(id){ui.editRewardId=ui.editRewardId===id?null:id;render();}
-function setRewardTitle(id,v){const r=state.rewards.find(x=>x.id===id);if(r){r.title=(v||'').trim()||'Præmie';save();render();}}
+function setRewardTitle(id,v){const r=state.rewards.find(x=>x.id===id);if(r){r.title=(v||'').trim();save();render();}}
 function setRewardCost(id,d){const r=state.rewards.find(x=>x.id===id);if(r){r.cost=Math.max(5,r.cost+d);save();render();}}
 function setRewardCostVal(id,v){const r=state.rewards.find(x=>x.id===id);if(r){let n=parseInt(String(v).replace(/[^0-9]/g,''),10);if(isNaN(n))n=5;r.cost=Math.max(0,Math.min(9999,n));save();render();}}
 function setRewardCat(id,c){const r=state.rewards.find(x=>x.id===id);if(r){r.category=c;save();render();}}
+function setRewardReset(id,rs){const r=state.rewards.find(x=>x.id===id);if(r){r.reset=rs;save();render();}}
 function setRewardActive(id,ch){const r=state.rewards.find(x=>x.id===id);if(r){r.active=ch;save();render();}}
 function delReward(id){state.rewards=state.rewards.filter(x=>x.id!==id);if(ui.editRewardId===id)ui.editRewardId=null;save();render();}
-/* emoji */
 function pickEmoji(kind,id){ui.overlay={type:'emoji',kind:kind,id:id};renderOverlay();}
 function setEmoji(e){const o=ui.overlay;if(o.kind==='task'){const t=state.tasks.find(x=>x.id===o.id);if(t)t.icon=e;}else{const r=state.rewards.find(x=>x.id===o.id);if(r)r.icon=e;}ui.overlay=null;save();render();}
-/* overblik */
 function sendMsg(kidId){const el=document.getElementById('msg_'+kidId);if(!el)return;const txt=el.value.trim();const k=state.kids.find(x=>x.id===kidId);if(k){k.message=txt?{text:txt,from:currentParent().name,when:Date.now()}:null;save();render();toast(txt?('Besked sendt til '+k.name+' 💬'):'Besked fjernet');}}
 function setNotify(cat,ch){state.notifyCategories[cat]=ch;save();render();}
 function closeOverlay(){ui.overlay=null;renderOverlay();}
@@ -864,7 +877,7 @@ function confettiBurstCenter(){const f=document.getElementById('frame').getBound
 let toastT;
 function toast(m){let t=document.querySelector('.toast');if(t)t.remove();t=document.createElement('div');t.className='toast';t.textContent=m;document.getElementById('frame').appendChild(t);clearTimeout(toastT);toastT=setTimeout(()=>t.remove(),2100);}
 
-/* ===== Back-knap: naviger op i appen før browseren forlader siden ===== */
+/* ===== Back-knap ===== */
 function atRoot(){return ui.screen==='welcome'||ui.screen==='picker';}
 function appBack(){
   if(ui.screen==='editor')go('home');
