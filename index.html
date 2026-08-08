@@ -42,12 +42,10 @@
   .scr{flex:1;display:flex;flex-direction:column;overflow:hidden;animation:popIn .2s ease}
   .scroll{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch}
 
-  /* Banner: stripe + scallops share --band so they line up 1:1 */
   .stripe{height:14px}
   .scallops{display:flex;height:12px;overflow:hidden}
   .scallops i{flex:0 0 var(--band);width:var(--band);border-radius:0 0 50% 50%}
 
-  /* Header */
   .head{padding:14px 16px 12px;display:flex;align-items:center;gap:12px}
   .avatar-btn{width:54px;height:54px;flex-shrink:0;border:none;background:none;padding:0;cursor:pointer;position:relative}
   .avatar-btn .pen{position:absolute;right:-2px;bottom:-2px;width:20px;height:20px;border-radius:50%;background:#fff;border:1px solid var(--line);display:flex;align-items:center;justify-content:center;font-size:10px;box-shadow:0 1px 3px rgba(0,0,0,.15)}
@@ -59,6 +57,8 @@
   .lock{width:34px;height:34px;border-radius:50%;background:#fff;border:1px solid var(--line);display:flex;align-items:center;justify-content:center;font-size:14px;cursor:pointer;flex-shrink:0}
   .today{padding:0 18px;font-size:13px;color:var(--muted);margin:2px 0 8px}
   .goldbar{margin:0 14px 10px;background:linear-gradient(120deg,#FFF3C4,#FFE07A);border:1px solid #F0CE5A;border-radius:14px;padding:10px 14px;font-size:13.5px;font-weight:600;color:#8a6a00;font-family:var(--poppins)}
+  .msgbanner{margin:0 14px 10px;background:#EAF3FF;border:1px solid #cfe2fb;border-radius:14px;padding:10px 12px;display:flex;gap:8px;align-items:center;font-size:13px}
+  .msgbanner .x{margin-left:auto;cursor:pointer;color:#9bb3d1;font-size:12px}
 
   .sec{margin:0 14px 14px;background:#fff;border-radius:18px;box-shadow:0 2px 10px rgba(124,77,255,.07);overflow:hidden}
   .sec-h{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;cursor:pointer}
@@ -76,7 +76,6 @@
   .task.done .check{background:var(--purple);border-color:var(--purple)}
   .hint{text-align:center;font-size:11px;color:var(--muted3);padding:2px 0 16px}
 
-  /* Shop */
   .shopwrap{background:#FFF8EA}
   .shophead{display:flex;align-items:center;justify-content:space-between;padding:14px 16px 6px}
   .shophead .t{font-family:var(--poppins);font-weight:700;font-size:19px}
@@ -86,21 +85,19 @@
   .reward{display:flex;align-items:center;gap:12px;padding:12px 14px;margin:0 14px;border-bottom:1px solid #F1E7Cf}
   .reward:last-child{border-bottom:none}
   .reward .ic{width:44px;height:44px;border-radius:12px;background:#FFF6E4;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0;overflow:hidden}
-  .reward .tt{flex:1;font-weight:600;font-size:14.5px;min-width:0}
-  .reward .tt .sub{font-size:11.5px;color:var(--coral-tx);font-weight:600}
-  .cost{font-family:var(--poppins);font-weight:700;font-size:12.5px;color:var(--coral-tx);background:var(--coral-bg);padding:4px 10px;border-radius:100px;white-space:nowrap}
-  .buy{border:none;background:var(--purple);color:#fff;font-family:var(--poppins);font-weight:600;font-size:12.5px;padding:9px 15px;border-radius:100px;cursor:pointer;white-space:nowrap}
-  .buy.owned{background:#E8F6D8;color:var(--green-tx)}
+  .reward .tt{flex:1;font-weight:600;font-size:14.5px;min-width:0;overflow:hidden;text-overflow:ellipsis}
+  .reward .tt .sub{font-size:11.5px;color:var(--muted2);font-weight:600}
+  /* fixed columns so coins + buttons line up vertically */
+  .cost{flex:0 0 62px;font-family:var(--poppins);font-weight:700;font-size:12.5px;color:var(--coral-tx);background:var(--coral-bg);padding:5px 0;border-radius:100px;text-align:center}
+  .buy{flex:0 0 104px;border:none;background:var(--purple);color:#fff;font-family:var(--poppins);font-weight:600;font-size:12.5px;padding:9px 0;border-radius:100px;cursor:pointer;white-space:nowrap;text-align:center}
+  .buy.owned,.buy.today{background:#E8F6D8;color:var(--green-tx)}
   .buy.short{background:#F0ECF7;color:var(--muted2)}
-  .buy.today{background:#E8F6D8;color:var(--green-tx)}
 
-  /* Nav */
   .nav{display:flex;background:#fff;border-top:1px solid var(--line);padding:8px 8px calc(8px + env(safe-area-inset-bottom))}
   .nav button{flex:1;border:none;background:none;display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 0;cursor:pointer;color:var(--muted3);font-family:var(--poppins);font-weight:600;font-size:11px}
   .nav button .i{font-size:20px}
   .nav button.on{color:var(--purple)}
 
-  /* Welcome */
   .welcome{align-items:center;justify-content:center;text-align:center;padding:40px 30px;gap:14px}
   .welcome h1{font-family:var(--poppins);font-weight:700;font-size:30px;margin:6px 0 0}
   .wtag{display:inline-block;background:#EEE9FB;color:var(--muted2);font-family:var(--poppins);font-weight:600;font-size:10.5px;padding:3px 10px;border-radius:100px;letter-spacing:.4px;text-transform:uppercase}
@@ -109,7 +106,6 @@
   .link{background:none;border:none;color:var(--muted3);font-size:12.5px;cursor:pointer;margin-top:2px}
   .link b{color:var(--purple)}
 
-  /* Picker */
   .picker{padding:28px 20px 22px;gap:16px;overflow:auto}
   .picker .ttl{text-align:center;font-family:var(--poppins);font-weight:700;font-size:23px}
   .picker .sub{text-align:center;font-size:13px;color:var(--muted);margin-top:4px}
@@ -122,7 +118,6 @@
   .pmini{flex:1;min-width:120px;background:#fff;border:1.5px dashed #c9bdf0;border-radius:18px;padding:14px 10px;display:flex;flex-direction:column;align-items:center;gap:8px;cursor:pointer}
   .pmini .nm{font-family:var(--poppins);font-weight:600;font-size:13.5px}
 
-  /* Editor */
   .ed-top{display:flex;align-items:center;gap:10px;padding:14px 16px}
   .backbtn{width:34px;height:34px;border-radius:50%;background:#fff;border:1px solid var(--line);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:15px;flex-shrink:0}
   .ed-title{font-family:var(--poppins);font-weight:600;font-size:16px}
@@ -138,24 +133,61 @@
   .item .lk{position:absolute;top:4px;right:5px;font-size:11px}
   .swatch{width:38px;height:38px;border-radius:50%;border:2px solid #2B2320}
 
-  /* History */
   .hrow{display:flex;align-items:center;gap:12px;padding:12px 16px;margin:0 14px;border-bottom:1px solid #F3EFFB}
   .hrow .ic{width:40px;height:40px;border-radius:12px;background:#F3EFFB;display:flex;align-items:center;justify-content:center;font-size:19px}
   .hrow .tt{flex:1;font-weight:600;font-size:14px}
   .hrow .wh{font-size:11.5px;color:var(--muted2)}
-  .empty{text-align:center;color:var(--muted2);font-size:13.5px;padding:40px 30px}
+  .empty{text-align:center;color:var(--muted2);font-size:13.5px;padding:34px 30px}
 
-  /* Parent placeholder */
-  .pp{padding:20px;display:flex;flex-direction:column;gap:14px}
-  .ppcard{background:#fff;border-radius:18px;padding:18px;box-shadow:0 2px 10px rgba(124,77,255,.07)}
+  /* Parent panel */
+  .ptabs{display:flex;gap:8px;padding:4px 14px 10px;overflow-x:auto;border-bottom:1px solid var(--line)}
+  .ptab{flex:0 0 auto;border:none;background:#F1ECF9;color:var(--muted);font-family:var(--poppins);font-weight:600;font-size:12px;padding:8px 14px;border-radius:100px;cursor:pointer;white-space:nowrap}
+  .ptab.on{background:var(--purple);color:#fff}
+  .admwrap{padding:12px 14px}
+  .addbtn{width:100%;border:1.5px dashed #c9bdf0;background:#fff;color:var(--purple);font-family:var(--poppins);font-weight:600;font-size:14px;padding:12px;border-radius:14px;cursor:pointer;margin-bottom:10px}
+  .adm{background:#fff;border-radius:16px;box-shadow:0 2px 8px rgba(124,77,255,.06);margin-bottom:10px;overflow:hidden}
+  .adm-h{display:flex;align-items:center;gap:10px;padding:12px}
+  .adm-ic{width:42px;height:42px;border-radius:12px;background:#F3EFFB;border:none;font-size:20px;cursor:pointer;flex-shrink:0}
+  .adm-tt{flex:1;min-width:0;cursor:pointer;font-weight:600;font-size:14.5px}
+  .adm-sub{font-size:11.5px;color:var(--muted2);font-weight:400;margin-top:2px}
+  .del{border:none;background:none;color:#c9b6d6;font-size:16px;cursor:pointer;flex-shrink:0;padding:6px}
+  .adm-body{padding:6px 14px 14px;border-top:1px solid #F3EFFB}
+  .fld{display:block;font-size:12px;color:var(--muted);font-weight:600;margin:10px 0 4px}
+  .txt{width:100%;border:1px solid var(--line);border-radius:12px;padding:11px 13px;font-size:15px;font-family:var(--body);color:var(--ink)}
+  .stp{display:flex;align-items:center;gap:12px;margin-top:2px}
+  .stp button{width:34px;height:34px;border-radius:10px;border:1px solid var(--line);background:#F8F5FE;font-size:18px;cursor:pointer;color:var(--purple-dark)}
+  .stp span{font-family:var(--poppins);font-weight:700;font-size:16px;min-width:36px;text-align:center}
+  .repbtn{border:1px solid var(--line);background:#F8F5FE;border-radius:10px;padding:9px 12px;font-family:var(--body);font-weight:600;font-size:13px;cursor:pointer;color:var(--purple-dark);margin-top:2px}
+  .tworow{display:flex;gap:16px;margin-top:2px;align-items:flex-start}
+  .sw{position:relative;display:inline-block;width:42px;height:24px;flex-shrink:0}
+  .sw input{opacity:0;width:0;height:0}
+  .sw span{position:absolute;inset:0;background:#d9cff0;border-radius:100px;transition:.2s;cursor:pointer}
+  .sw span:before{content:'';position:absolute;width:18px;height:18px;left:3px;top:3px;background:#fff;border-radius:50%;transition:.2s}
+  .sw input:checked+span{background:var(--purple)}
+  .sw input:checked+span:before{transform:translateX(18px)}
+  .catpick{margin-top:2px}
+  .catpick .opt{display:flex;align-items:center;gap:8px;font-size:14px;cursor:pointer;padding:7px 0}
+  .catpick .opt .rd{width:20px;height:20px;border-radius:50%;border:2px solid var(--line);display:flex;align-items:center;justify-content:center;color:#fff;font-size:11px;flex-shrink:0}
+  .catpick .opt.sel .rd{background:var(--purple);border-color:var(--purple)}
+  .ovcard{background:#fff;border-radius:16px;box-shadow:0 2px 8px rgba(124,77,255,.06);padding:14px;margin-bottom:12px}
+  .ovhead{display:flex;align-items:center;gap:10px}
+  .ovstats{display:flex;gap:10px;margin:10px 0 4px}
+  .ovstat{flex:1;background:#F8F5FE;border-radius:12px;padding:9px 6px;text-align:center}
+  .ovstat .v{font-family:var(--poppins);font-weight:700;font-size:18px}
+  .ovstat .l{font-size:10.5px;color:var(--muted2)}
+  .msgrow{display:flex;gap:8px;margin-top:10px}
+  .msgrow input{flex:1;border:1px solid var(--line);border-radius:10px;padding:9px 11px;font-size:14px}
+  .msgrow button{border:none;background:var(--purple);color:#fff;border-radius:10px;padding:0 16px;font-weight:600;cursor:pointer;font-family:var(--poppins)}
+  .set-h{font-family:var(--poppins);font-weight:700;font-size:14px;margin:14px 14px 0}
+  .setrow{display:flex;align-items:center;gap:10px;background:#fff;border-radius:14px;box-shadow:0 2px 8px rgba(124,77,255,.06);padding:12px 14px;margin:10px 14px 0}
+  .setrow .t{flex:1;font-size:14px;font-weight:600}
   .btn{background:var(--purple);color:#fff;border:none;border-radius:100px;padding:12px 20px;font-family:var(--poppins);font-weight:600;font-size:14px;cursor:pointer}
   .btn.ghost{background:#F1ECF9;color:var(--purple-dark)}
 
-  /* Overlay / dialogs */
   #overlay{position:absolute;inset:0;z-index:50;display:none}
   #overlay.on{display:block}
   .backdrop{position:absolute;inset:0;background:rgba(30,20,60,.55);animation:fadeIn .2s ease;display:flex;align-items:center;justify-content:center;padding:24px}
-  .sheet{background:#fff;border-radius:22px;width:100%;max-width:340px;padding:22px;animation:popIn .2s ease}
+  .sheet{background:#fff;border-radius:22px;width:100%;max-width:340px;padding:22px;animation:popIn .2s ease;max-height:82%;overflow:auto}
   .setup{background:linear-gradient(160deg,#2A2150,#1c1638);color:#fff;position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:34px 28px;gap:16px;text-align:center;animation:fadeIn .2s ease}
   .setup h2{font-family:var(--poppins);font-weight:700;font-size:22px;margin:0}
   .setup .desc{font-size:13.5px;color:#c9c1e8;max-width:28ch}
@@ -181,15 +213,15 @@
   .cbtns button{width:58px;height:58px;border-radius:50%;border:none;font-size:24px;cursor:pointer}
   .cbtns .no{background:#EFECF5;color:#8a7fb0}
   .cbtns .yes{background:var(--purple);color:#fff}
-  .sheet .fld{display:block;font-size:12px;color:var(--muted);font-weight:600;margin:10px 0 4px}
-  .sheet input.txt{width:100%;border:1px solid var(--line);border-radius:12px;padding:11px 13px;font-size:15px;font-family:var(--body);color:var(--ink)}
+  .sheet h3{font-family:var(--poppins);margin:0 0 4px}
   .agerow{display:flex;align-items:center;gap:14px;margin-top:6px}
   .agerow button{width:38px;height:38px;border-radius:12px;border:1px solid var(--line);background:#F8F5FE;font-size:20px;cursor:pointer;color:var(--purple-dark)}
   .agerow .av{font-family:var(--poppins);font-weight:700;font-size:20px;min-width:60px;text-align:center}
-  .sheet .row{display:flex;gap:10px;margin-top:18px}
-  .sheet .row .btn{flex:1;text-align:center}
+  .rowbtns{display:flex;gap:10px;margin-top:18px}
+  .rowbtns .btn{flex:1;text-align:center}
+  .emoji-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin-top:10px}
+  .emoji-grid button{font-size:22px;background:#F6F3FC;border:none;border-radius:10px;padding:9px 0;cursor:pointer}
 
-  /* Effects */
   .toast{position:absolute;left:50%;bottom:82px;transform:translateX(-50%);background:#241948;color:#fff;padding:10px 18px;border-radius:100px;font-size:13px;font-weight:600;z-index:80;animation:toastPop .25s ease;pointer-events:none;white-space:nowrap;box-shadow:0 8px 22px rgba(0,0,0,.25);max-width:86%;text-align:center}
   .float{position:absolute;font-family:var(--poppins);font-weight:700;font-size:17px;z-index:80;animation:pointFloat 1s ease forwards;pointer-events:none}
   .confetti{position:absolute;width:9px;height:9px;z-index:75;animation:confettiPop .8s ease-out forwards;pointer-events:none}
@@ -198,13 +230,13 @@
 </head>
 <body>
 <div class="frame" id="frame">
-  <div class="stagebadge">FASE 1</div>
+  <div class="stagebadge">FASE 2</div>
   <div id="app"></div>
   <div id="overlay"></div>
 </div>
 
 <script>
-/* ============ Avatar (portet fra design-spec) ============ */
+/* ===== Avatar ===== */
 function shade(hex,pct){
   const h=(hex||'#FFB6D9').replace('#',''); const num=parseInt(h.length===3?h.split('').map(c=>c+c).join(''):h,16);
   let r=(num>>16)+Math.round(255*pct), g=((num>>8)&0xFF)+Math.round(255*pct), b=(num&0xFF)+Math.round(255*pct);
@@ -242,7 +274,7 @@ function avatarHTML(o){
   return `<div style="position:relative;width:${size}px;height:${size}px;flex-shrink:0">${body}${hatEl}</div>`;
 }
 
-/* ============ Katalog (fast) ============ */
+/* ===== Katalog ===== */
 const COLORS=[
   {value:'#FFFFFF',title:'Hvid',cost:0},{value:'#FFB6D9',title:'Pink',cost:0},
   {value:'#B8E8B0',title:'Grøn',cost:0},{value:'#AEDFF7',title:'Blå',cost:0},
@@ -262,12 +294,19 @@ const PANTS=[
 const KID_COLORS=['#7C4DFF','#FF6B4A','#2EB8A6','#E0468A','#F4A93B'];
 const DAYS=['søndag','mandag','tirsdag','onsdag','torsdag','fredag','lørdag'];
 const REPEAT_LABEL={once:'Engang',daily:'Hver dag',weekly:'Ugentligt',biweekly:'Hver 2. uge',monthly:'Månedligt'};
+const REPEATS=['daily','weekly','biweekly','monthly','once'];
+const TASK_EMOJIS=['🛏️','🦷','🍽️','📚','🧹','🐕','🚿','👕','🧦','🗑️','🪥','🍳','🧸','✏️','⚽','🎹','🌱','🧼','🛒','🧺','🚲','📖','🎨','🧽'];
+const REWARD_EMOJIS=['🎬','🍕','🍦','📱','🛌','🎮','🍭','🎡','🏊','🎳','🍿','🎁','💤','🧁','🎢','🚗','⭐','🐾','📺','🎯','🍔','🛼'];
 
-/* ============ State ============ */
+/* ===== State ===== */
 const KEY='pling_v1';
-let state=load()||{seq:1,parents:[],kids:[],tasks:[],rewards:[],currentKidId:null};
-let ui={screen:'welcome',shownPoints:0,overlay:null,tasksOpen:true};
-
+let state=normalize(load());
+let ui={screen:'welcome',shownPoints:0,overlay:null,tasksOpen:true,parentTab:'opgaver',editId:null,editRewardId:null,parentId:null};
+function normalize(s){
+  s=s||{}; s.seq=s.seq||1; s.parents=s.parents||[]; s.kids=s.kids||[]; s.tasks=s.tasks||[]; s.rewards=s.rewards||[];
+  s.notifications=s.notifications||[]; s.notifyCategories=s.notifyCategories||{Oplevelser:true,Privilegier:true,Avatar:true};
+  if(s.currentKidId===undefined)s.currentKidId=null; return s;
+}
 function load(){ try{const v=localStorage.getItem(KEY); return v?JSON.parse(v):null;}catch(e){return null;} }
 function save(){ try{localStorage.setItem(KEY,JSON.stringify(state));}catch(e){} }
 function uid(p){ state.seq=(state.seq||1)+1; return p+state.seq; }
@@ -284,18 +323,18 @@ function seedDefaults(){
   }
   if(state.rewards.length===0){
     state.rewards=[
-      {id:uid('r'),icon:'🎬',title:'Biograftur',cost:120,category:'Oplevelser'},
-      {id:uid('r'),icon:'🍕',title:'Vælg aftensmad',cost:60,category:'Oplevelser'},
-      {id:uid('r'),icon:'🍦',title:'Is-tur',cost:40,category:'Oplevelser'},
-      {id:uid('r'),icon:'📱',title:'30 min ekstra skærmtid',cost:40,category:'Privilegier'},
-      {id:uid('r'),icon:'🛌',title:'Sengetid +30 min',cost:50,category:'Privilegier'},
-      {id:uid('r'),icon:'🎮',title:'30 min gaming',cost:40,category:'Privilegier'}
+      {id:uid('r'),icon:'🎬',title:'Biograftur',cost:120,category:'Oplevelser',active:true},
+      {id:uid('r'),icon:'🍕',title:'Vælg aftensmad',cost:60,category:'Oplevelser',active:true},
+      {id:uid('r'),icon:'🍦',title:'Is-tur',cost:40,category:'Oplevelser',active:true},
+      {id:uid('r'),icon:'📱',title:'30 min ekstra skærmtid',cost:40,category:'Privilegier',active:true},
+      {id:uid('r'),icon:'🛌',title:'Sengetid +30 min',cost:50,category:'Privilegier',active:true},
+      {id:uid('r'),icon:'🎮',title:'30 min gaming',cost:40,category:'Privilegier',active:true}
     ];
   }
   save();
 }
 
-/* ============ Datohjælp ============ */
+/* ===== Dato ===== */
 function pad(n){return n<10?'0'+n:''+n;}
 function dstr(d){return ''+d.getFullYear()+pad(d.getMonth()+1)+pad(d.getDate());}
 function todayKey(){return 'd'+dstr(new Date());}
@@ -317,14 +356,16 @@ function relTime(ts){
   return Math.floor(days/7)+' uger siden';
 }
 
-/* ============ Helpers ============ */
+/* ===== Helpers ===== */
 function currentKid(){return state.kids.find(k=>k.id===state.currentKidId);}
+function currentParent(){return state.parents.find(x=>x.id===ui.parentId)||state.parents[0];}
 function activeTasks(){return state.tasks.filter(t=>t.active!==false);}
 function taskDone(kid,t){return kid.completed && kid.completed[t.id]===periodKey(t.repeat);}
 function allDone(kid){const a=activeTasks();return a.length>0 && a.every(t=>taskDone(kid,t));}
-function esc(s){return (s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+function ownedList(k,kind){return kind==='color'?k.ownedColors:kind==='hat'?k.ownedHats:k.ownedPants;}
+function esc(s){return (s==null?'':''+s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
 
-/* ============ Render ============ */
+/* ===== Render ===== */
 const app=document.getElementById('app');
 function render(){
   let h='';
@@ -335,8 +376,7 @@ function render(){
   else if(ui.screen==='history') h=historyScreen();
   else if(ui.screen==='editor') h=editorScreen();
   else if(ui.screen==='parent') h=parentScreen();
-  app.innerHTML=h;
-  renderOverlay();
+  app.innerHTML=h; renderOverlay();
 }
 function scallops(c1,c2){let s='';for(let i=0;i<34;i++){s+=`<i style="background:${i%2?c2:c1}"></i>`;}return s;}
 function bannerHTML(c1,c2){
@@ -353,14 +393,12 @@ function navHTML(active){
 function welcomeScreen(){
   return `<div class="scr welcome">
     <div>${avatarHTML({size:96,bodyColor:'#FFB6D9',hat:'🎩'})}</div>
-    <span class="wtag">Arbejdstitel</span>
-    <h1>Pling</h1>
+    <span class="wtag">Arbejdstitel</span><h1>Pling</h1>
     <p>Løs opgaver, saml point, og forkæl din avatar i butikken.</p>
     <button class="cta" onclick="startParentSetup()">Opret forælderkonto</button>
     <button class="link" onclick="toast('Barne-login med kode kommer i Fase 4 🔑')">Er du et barn? <b>Indtast din kode</b></button>
   </div>`;
 }
-
 function pickerScreen(){
   const kids=state.kids.map(k=>`
     <div class="pcard" onclick="openKid('${k.id}')">
@@ -375,14 +413,12 @@ function pickerScreen(){
     </div>`).join('');
   return `<div class="scr picker">
     <div><div class="ttl">Hvem er på? 👋</div><div class="sub">Vælg din profil</div></div>
-    ${state.kids.length? kids : '<div class="empty" style="padding:24px 10px">Ingen børn endnu.<br>Tilføj dit første barn nedenfor 👇</div>'}
+    ${state.kids.length? kids : '<div class="empty">Ingen børn endnu.<br>Tilføj dit første barn nedenfor 👇</div>'}
     <div class="addcard" onclick="startAddChild()"><span style="font-size:18px">＋</span> Tilføj barn</div>
     <div class="plabel">Forældre</div>
     <div class="prow">${parents}</div>
-    <div class="hint" style="margin-top:16px">🔑 Par en ny enhed med en kode (Fase 4)</div>
   </div>`;
 }
-
 function homeScreen(){
   const k=currentKid(); if(!k){ui.screen='picker';return pickerScreen();}
   const tasks=[...activeTasks()].sort((a,b)=>(taskDone(k,a)?1:0)-(taskDone(k,b)?1:0));
@@ -390,10 +426,10 @@ function homeScreen(){
     <div class="task ${d?'done':''}" onclick="toggleTask('${t.id}',event)">
       <div class="ic" style="background:${['#EFE9FF','#E3FBF6','#FFEDE3','#FFF6D8','#FFE8F1','#E7F3FF'][state.tasks.indexOf(t)%6]}">${t.icon}</div>
       <div class="tx"><div class="tt">${esc(t.title)}</div><div class="fr">${REPEAT_LABEL[t.repeat]||''}</div></div>
-      <div class="pts">+${t.points}</div>
-      <div class="check">${d?'✓':''}</div>
+      <div class="pts">+${t.points}</div><div class="check">${d?'✓':''}</div>
     </div>`;}).join('');
-  const gold = (k.dailyBonusClaimed===todayKey()) ? `<div class="goldbar">🌟 Du har klaret hele dagen! +15 bonuspoint</div>`:'';
+  const gold=(k.dailyBonusClaimed===todayKey())?`<div class="goldbar">🌟 Du har klaret hele dagen! +15 bonuspoint</div>`:'';
+  const msg=k.message?`<div class="msgbanner">💬 <div><b>${esc(k.message.from)}:</b> ${esc(k.message.text)}</div><span class="x" onclick="dismissMsg()">✕</span></div>`:'';
   return `<div class="scr">
     ${bannerHTML('#7C4DFF','#B4FF3C')}
     <div class="scroll">
@@ -404,26 +440,23 @@ function homeScreen(){
         <div class="lock" onclick="go('picker')" title="Skift profil">🔒</div>
       </div>
       <div class="today">I dag er det ${DAYS[new Date().getDay()]} ☀️</div>
-      ${gold}
+      ${msg}${gold}
       <div class="sec">
         <div class="sec-h" onclick="toggleTasks()"><h3>Opgaver</h3><span class="cv">${ui.tasksOpen?'▾':'▸'}</span></div>
-        <div style="display:${ui.tasksOpen?'block':'none'}">${rows}</div>
+        <div style="display:${ui.tasksOpen?'block':'none'}">${rows||'<div class="hint" style="padding:16px">Ingen aktive opgaver — tilføj nogle i forælder-panelet</div>'}</div>
       </div>
       <div class="hint">Tryk på en opgave for at løse den ✨ — tryk igen for at fortryde</div>
     </div>
     ${navHTML('home')}
   </div>`;
 }
-
 function rewardRow(k,r){
   const today=k.redeemedToday&&k.redeemedToday[r.id]===todayKey();
   let btn;
   if(today) btn=`<button class="buy today" disabled>Købt i dag ✓</button>`;
   else if(k.points<r.cost) btn=`<button class="buy short" disabled>Mangler ${r.cost-k.points}</button>`;
   else btn=`<button class="buy" onclick="askRedeem('reward','${r.id}')">Indløs</button>`;
-  return `<div class="reward"><div class="ic">${r.icon}</div>
-    <div class="tt">${esc(r.title)}</div>
-    <div class="cost">${r.cost} 🪙</div>${btn}</div>`;
+  return `<div class="reward"><div class="ic">${r.icon}</div><div class="tt">${esc(r.title)}</div><div class="cost">🪙 ${r.cost}</div>${btn}</div>`;
 }
 function cosmeticRow(k,item,kind){
   const owned=ownedList(k,kind).includes(item.value);
@@ -434,14 +467,13 @@ function cosmeticRow(k,item,kind){
   if(owned) btn=`<button class="buy owned" onclick="go('editor')">Ejet ✓</button>`;
   else if(k.points<item.cost) btn=`<button class="buy short" disabled>Mangler ${item.cost-k.points}</button>`;
   else btn=`<button class="buy" onclick="askRedeem('${kind}','${item.value}')">Indløs</button>`;
-  return `<div class="reward"><div class="ic">${mini}</div>
-    <div class="tt">${esc(item.title)}<div class="sub" style="color:var(--muted2)">${kind==='color'?'Farve':kind==='hat'?'Hat':'Bukser'}</div></div>
-    <div class="cost">${item.cost} 🪙</div>${btn}</div>`;
+  return `<div class="reward"><div class="ic">${mini}</div><div class="tt">${esc(item.title)}<div class="sub">${kind==='color'?'Farve':kind==='hat'?'Hat':'Bukser'}</div></div><div class="cost">🪙 ${item.cost}</div>${btn}</div>`;
 }
 function shopScreen(){
   const k=currentKid(); if(!k){ui.screen='picker';return pickerScreen();}
-  const exp=state.rewards.filter(r=>r.category==='Oplevelser').map(r=>rewardRow(k,r)).join('');
-  const priv=state.rewards.filter(r=>r.category==='Privilegier').map(r=>rewardRow(k,r)).join('');
+  const rw=state.rewards.filter(r=>r.active!==false);
+  const exp=rw.filter(r=>r.category==='Oplevelser').map(r=>rewardRow(k,r)).join('');
+  const priv=rw.filter(r=>r.category==='Privilegier').map(r=>rewardRow(k,r)).join('');
   const cosmetics=[
     ...COLORS.filter(c=>c.cost>0).map(c=>cosmeticRow(k,c,'color')),
     ...HATS.filter(c=>c.cost>0).map(c=>cosmeticRow(k,c,'hat')),
@@ -453,30 +485,24 @@ function shopScreen(){
       <div class="shophead"><div class="t">🍋 Butikken</div>
         <div class="r"><div class="pill"><span>🪙</span><span class="n">${k.points}</span></div>
         <div class="receipt" onclick="go('history')" title="Købshistorik">🧾</div></div></div>
-      <div class="catbar">🎉 Oplevelser</div>${exp}
-      <div class="catbar">⭐ Privilegier</div>${priv}
+      <div class="catbar">🎉 Oplevelser</div>${exp||'<div class="hint" style="padding:12px 0">Ingen endnu</div>'}
+      <div class="catbar">⭐ Privilegier</div>${priv||'<div class="hint" style="padding:12px 0">Ingen endnu</div>'}
       <div class="catbar">🎨 Avatar</div>${cosmetics}
       <div class="hint" style="padding:14px 0 18px">Avatar-ting ejes for altid — skift dem i Min profil</div>
     </div>
     ${navHTML('shop')}
   </div>`;
 }
-
 function historyScreen(){
   const k=currentKid(); if(!k){ui.screen='picker';return pickerScreen();}
   const list=(k.redemptions||[]).slice().reverse();
-  const rows=list.length? list.map(r=>`<div class="hrow"><div class="ic">${r.icon}</div>
-      <div style="flex:1"><div class="tt">${esc(r.title)}</div><div class="wh">${relTime(r.when)}</div></div>
-      <div class="cost">${r.cost} 🪙</div></div>`).join('')
+  const rows=list.length? list.map(r=>`<div class="hrow"><div class="ic">${r.icon}</div><div style="flex:1"><div class="tt">${esc(r.title)}</div><div class="wh">${relTime(r.when)}</div></div><div class="cost">🪙 ${r.cost}</div></div>`).join('')
     : '<div class="empty">Ingen køb endnu 🧾</div>';
   return `<div class="scr">
     <div class="ed-top"><div class="backbtn" onclick="go('shop')">←</div><div class="ed-title">Købshistorik</div></div>
-    <div class="scroll">${rows}</div>
-    ${navHTML('shop')}
+    <div class="scroll">${rows}</div>${navHTML('shop')}
   </div>`;
 }
-
-function ownedList(k,kind){return kind==='color'?k.ownedColors:kind==='hat'?k.ownedHats:k.ownedPants;}
 function itemGrid(k,arr,kind,cur){
   return arr.map(it=>{
     const owned=ownedList(k,kind).includes(it.value);
@@ -484,13 +510,9 @@ function itemGrid(k,arr,kind,cur){
     const prev=kind==='color'?avatarHTML({size:40,bodyColor:it.value||'#FFFFFF',hat:'',pants:''})
       :kind==='hat'?avatarHTML({size:40,bodyColor:k.bodyColor,hat:it.value,pants:''})
       :avatarHTML({size:40,bodyColor:k.bodyColor,hat:'',pants:it.value});
-    const inner = (kind!=='color') && it.value==='' ? `<div class="swatch" style="background:#F3EFFB;border-style:dashed;display:flex;align-items:center;justify-content:center;font-size:11px;color:#a79bd1">–</div>` : prev;
+    const inner=(kind!=='color'&&it.value==='')?`<div class="swatch" style="background:#F3EFFB;border-style:dashed;display:flex;align-items:center;justify-content:center;font-size:11px;color:#a79bd1">–</div>`:prev;
     return `<div class="item ${sel?'sel':''} ${owned?'':'locked'}" onclick="${owned?`equip('${kind}','${it.value}')`:`toShop()`}">
-      ${owned?'':'<span class="lk">🔒</span>'}
-      ${inner}
-      <div class="lab">${esc(it.title)}</div>
-      ${owned?'':`<div class="price">${it.cost} 🪙</div>`}
-    </div>`;
+      ${owned?'':'<span class="lk">🔒</span>'}${inner}<div class="lab">${esc(it.title)}</div>${owned?'':`<div class="price">${it.cost} 🪙</div>`}</div>`;
   }).join('');
 }
 function editorScreen(){
@@ -498,11 +520,9 @@ function editorScreen(){
   return `<div class="scr">
     <div class="ed-top"><div class="backbtn" onclick="go('home')">←</div><div class="ed-title">Min profil</div></div>
     <div class="scroll">
-      <div class="ed-preview">
-        ${avatarHTML({size:110,bodyColor:k.bodyColor,hat:k.hat,pants:k.pants})}
+      <div class="ed-preview">${avatarHTML({size:110,bodyColor:k.bodyColor,hat:k.hat,pants:k.pants})}
         <input class="nameinput" value="${esc(k.name)}" onchange="renameKid(this.value)" maxlength="16">
-        <div class="pill"><span>🪙</span><span class="n">${k.points}</span></div>
-      </div>
+        <div class="pill"><span>🪙</span><span class="n">${k.points}</span></div></div>
       <div class="grid-h">Farve</div><div class="grid">${itemGrid(k,COLORS,'color',k.bodyColor)}</div>
       <div class="grid-h">Hat</div><div class="grid">${itemGrid(k,HATS,'hat',k.hat)}</div>
       <div class="grid-h">Bukser</div><div class="grid">${itemGrid(k,PANTS,'pants',k.pants)}</div>
@@ -511,106 +531,180 @@ function editorScreen(){
   </div>`;
 }
 
+/* ===== Forældre-panel ===== */
 function parentScreen(){
-  const p=state.parents.find(x=>x.id===ui.parentId)||state.parents[0];
+  const p=currentParent(); const tab=ui.parentTab||'opgaver';
+  const tabs=[['opgaver','Opgaver'],['praemier','Præmier'],['boern','Børn'],['overblik','Overblik'],['indstil','Indstillinger']];
+  const tabrow=tabs.map(t=>`<button class="ptab ${tab===t[0]?'on':''}" onclick="setParentTab('${t[0]}')">${t[1]}</button>`).join('');
+  let body='';
+  if(tab==='opgaver')body=tabOpgaver();
+  else if(tab==='praemier')body=tabPraemier();
+  else if(tab==='boern')body=tabBoern();
+  else if(tab==='overblik')body=tabOverblik();
+  else body=tabIndstil();
   return `<div class="scr">
-    <div class="ed-top"><div class="backbtn" onclick="go('picker')">←</div><div class="ed-title">Forælder</div></div>
-    <div class="pp">
-      <div style="display:flex;align-items:center;gap:12px">${avatarHTML({size:54,bodyColor:(p&&p.bodyColor)||'#B8C7F0',hat:(p&&p.hat)||'👓'})}
-        <div><div style="font-family:var(--poppins);font-weight:600;font-size:17px">${esc(p?p.name:'')}</div><div style="font-size:12px;color:var(--muted)">Forælder</div></div></div>
-      <div class="ppcard">
-        <div style="font-family:var(--poppins);font-weight:600;margin-bottom:6px">Dine børn</div>
-        <div style="font-size:13.5px;color:var(--muted)">${state.kids.length? state.kids.map(k=>esc(k.name)).join(', ') : 'Ingen endnu'}</div>
-        <div style="margin-top:12px"><button class="btn" onclick="startAddChild()">＋ Tilføj barn</button></div>
+    <div class="ed-top"><div class="backbtn" onclick="go('picker')">←</div>
+      <div style="display:flex;align-items:center;gap:9px">${avatarHTML({size:36,bodyColor:(p&&p.bodyColor)||'#B8C7F0',hat:(p&&p.hat)||'👓'})}<div class="ed-title">${esc(p?p.name:'Forælder')}</div></div></div>
+    <div class="ptabs">${tabrow}</div>
+    <div class="scroll">${body}</div>
+  </div>`;
+}
+function tabOpgaver(){
+  const rows=state.tasks.map(t=>{
+    const open=ui.editId===t.id;
+    return `<div class="adm">
+      <div class="adm-h">
+        <button class="adm-ic" onclick="pickEmoji('task','${t.id}')">${t.icon}</button>
+        <div class="adm-tt" onclick="toggleEdit('${t.id}')">${esc(t.title)}<div class="adm-sub">${t.points} point · ${REPEAT_LABEL[t.repeat]}</div></div>
+        <label class="sw"><input type="checkbox" ${t.active!==false?'checked':''} onchange="setTaskActive('${t.id}',this.checked)"><span></span></label>
+        <button class="del" onclick="delTask('${t.id}')">✕</button>
       </div>
-      <div class="ppcard" style="color:var(--muted)">
-        <b style="font-family:var(--poppins);color:var(--ink)">Kommer i Fase 2</b><br>
-        Her får du snart faner til at oprette/redigere opgaver og præmier, se overblik og sende beskeder til dine børn.
+      ${open?`<div class="adm-body">
+        <label class="fld">Titel</label><input class="txt" value="${esc(t.title)}" onchange="setTaskTitle('${t.id}',this.value)">
+        <div class="tworow">
+          <div><label class="fld">Point</label><div class="stp"><button onclick="setTaskPoints('${t.id}',-1)">−</button><span>${t.points}</span><button onclick="setTaskPoints('${t.id}',1)">＋</button></div></div>
+          <div style="flex:1"><label class="fld">Gentagelse</label><button class="repbtn" onclick="cycleRepeat('${t.id}')">${REPEAT_LABEL[t.repeat]}</button></div>
+        </div>
+        <button class="btn" style="margin-top:14px;width:100%" onclick="toggleEdit('${t.id}')">Færdig</button>
+      </div>`:''}
+    </div>`;
+  }).join('');
+  return `<div class="admwrap"><button class="addbtn" onclick="addTask()">＋ Tilføj opgave</button>${rows}</div>`;
+}
+function tabPraemier(){
+  const rows=state.rewards.map(r=>{
+    const open=ui.editRewardId===r.id;
+    return `<div class="adm">
+      <div class="adm-h">
+        <button class="adm-ic" onclick="pickEmoji('reward','${r.id}')">${r.icon}</button>
+        <div class="adm-tt" onclick="toggleEditR('${r.id}')">${esc(r.title)}<div class="adm-sub">${r.cost} 🪙 · ${r.category}</div></div>
+        <label class="sw"><input type="checkbox" ${r.active!==false?'checked':''} onchange="setRewardActive('${r.id}',this.checked)"><span></span></label>
+        <button class="del" onclick="delReward('${r.id}')">✕</button>
       </div>
-    </div>
+      ${open?`<div class="adm-body">
+        <label class="fld">Titel</label><input class="txt" value="${esc(r.title)}" onchange="setRewardTitle('${r.id}',this.value)">
+        <label class="fld">Pris</label><div class="stp"><button onclick="setRewardCost('${r.id}',-5)">−</button><span>${r.cost}</span><button onclick="setRewardCost('${r.id}',5)">＋</button></div>
+        <label class="fld">Kategori</label>
+        <div class="catpick">
+          <div class="opt ${r.category==='Oplevelser'?'sel':''}" onclick="setRewardCat('${r.id}','Oplevelser')"><span class="rd">✓</span> 🎉 Oplevelser</div>
+          <div class="opt ${r.category==='Privilegier'?'sel':''}" onclick="setRewardCat('${r.id}','Privilegier')"><span class="rd">✓</span> ⭐ Privilegier</div>
+        </div>
+        <button class="btn" style="margin-top:14px;width:100%" onclick="toggleEditR('${r.id}')">Færdig</button>
+      </div>`:''}
+    </div>`;
+  }).join('');
+  return `<div class="admwrap"><button class="addbtn" onclick="addReward()">＋ Tilføj præmie</button>${rows}</div>
+    <div class="hint" style="padding:0 0 16px">Avatar-ting styres af appen og redigeres ikke her</div>`;
+}
+function tabBoern(){
+  const rows=state.kids.map(k=>`<div class="adm"><div class="adm-h">
+      ${avatarHTML({size:42,bodyColor:k.bodyColor,hat:k.hat,pants:k.pants})}
+      <div class="adm-tt">${esc(k.name)}<div class="adm-sub">${k.age} år · 🪙 ${k.points}</div></div>
+      <button class="del" onclick="askDelKid('${k.id}')">✕</button>
+    </div></div>`).join('');
+  return `<div class="admwrap"><button class="addbtn" onclick="startAddChild()">＋ Tilføj barn</button>
+    ${rows||'<div class="empty">Ingen børn endnu</div>'}
+    <div class="hint" style="padding:6px 0 16px">Parring med kode/QR til barnets egen enhed kommer i Fase 4</div></div>`;
+}
+function tabOverblik(){
+  if(!state.kids.length)return '<div class="empty">Tilføj et barn for at se overblik</div>';
+  return '<div class="admwrap">'+state.kids.map(k=>{
+    const last=(k.redemptions||[]).slice(-3).reverse();
+    const lastHtml=last.length?last.map(r=>`<div style="display:flex;gap:8px;align-items:center;font-size:13px;color:var(--muted);margin-top:4px"><span>${r.icon}</span> ${esc(r.title)} · <span style="color:var(--coral-tx);font-weight:600">🪙 ${r.cost}</span></div>`).join(''):'<div style="font-size:12.5px;color:var(--muted2);margin-top:4px">Ingen køb endnu</div>';
+    return `<div class="ovcard">
+      <div class="ovhead">${avatarHTML({size:44,bodyColor:k.bodyColor,hat:k.hat,pants:k.pants})}<div style="font-family:var(--poppins);font-weight:600;font-size:16px">${esc(k.name)}</div></div>
+      <div class="ovstats"><div class="ovstat"><div class="v">${k.points}</div><div class="l">Saldo 🪙</div></div><div class="ovstat"><div class="v">${k.totalEarned||0}</div><div class="l">Optjent i alt</div></div></div>
+      <div class="fld" style="margin-bottom:2px">Seneste køb</div>${lastHtml}
+      <div class="fld">Besked til ${esc(k.name)}</div>
+      <div class="msgrow"><input id="msg_${k.id}" placeholder="Skriv en besked…" value="${esc(k.message?k.message.text:'')}"><button onclick="sendMsg('${k.id}')">Send</button></div>
+    </div>`;
+  }).join('')+'</div>';
+}
+function tabIndstil(){
+  const plist=state.parents.map(p=>`<div class="setrow">${avatarHTML({size:34,bodyColor:p.bodyColor||'#B8C7F0',hat:p.hat||'👓'})}<div class="t">${esc(p.name)}</div></div>`).join('');
+  const nc=state.notifyCategories;
+  const toggle=(cat,lbl)=>`<div class="setrow"><div class="t">${lbl}</div><label class="sw"><input type="checkbox" ${nc[cat]!==false?'checked':''} onchange="setNotify('${cat}',this.checked)"><span></span></label></div>`;
+  const feed=state.notifications.slice(-8).reverse();
+  const feedHtml=feed.length?feed.map(n=>`<div class="setrow"><span style="font-size:18px">${n.icon}</span><div class="t"><b>${esc(n.kidName)}</b> indløste ${esc(n.title)}<div style="font-size:11.5px;color:var(--muted2);font-weight:400">${relTime(n.when)} · ${esc(n.category)}</div></div></div>`).join(''):'<div class="empty">Ingen endnu</div>';
+  return `<div style="padding-bottom:20px">
+    <div class="set-h">Forældre-konti</div>${plist}
+    <div class="setrow" style="justify-content:center;cursor:pointer;color:var(--purple);font-family:var(--poppins);font-weight:600" onclick="startAddParent()">＋ Tilføj forælder</div>
+    <div class="set-h">Få besked når børnene indløser</div>
+    ${toggle('Oplevelser','🎉 Oplevelser')}${toggle('Privilegier','⭐ Privilegier')}${toggle('Avatar','🎨 Avatar')}
+    <div class="set-h">Seneste</div>${feedHtml}
   </div>`;
 }
 
-/* ============ Overlays ============ */
+/* ===== Overlays ===== */
 function renderOverlay(){
   const ov=document.getElementById('overlay'); const o=ui.overlay;
   if(!o){ov.className='';ov.innerHTML='';return;}
   ov.className='on';
-  if(o.type==='setup') ov.innerHTML=setupOverlay(o);
-  else if(o.type==='pin') ov.innerHTML=pinOverlay(o);
-  else if(o.type==='addChild') ov.innerHTML=addChildOverlay(o);
-  else if(o.type==='confirm') ov.innerHTML=confirmOverlay(o);
+  if(o.type==='setup')ov.innerHTML=setupOverlay(o);
+  else if(o.type==='pin')ov.innerHTML=pinOverlay(o);
+  else if(o.type==='addChild')ov.innerHTML=addChildOverlay(o);
+  else if(o.type==='confirm')ov.innerHTML=confirmOverlay(o);
+  else if(o.type==='emoji')ov.innerHTML=emojiOverlay(o);
+  else if(o.type==='delkid')ov.innerHTML=delKidOverlay(o);
 }
-function keypad(fn){
-  let b='';for(let i=1;i<=9;i++)b+=`<button onclick="${fn}('${i}')">${i}</button>`;
-  b+=`<button class="blank"></button><button onclick="${fn}('0')">0</button><button onclick="${fn}('del')">⌫</button>`;
-  return `<div class="keypad">${b}</div>`;
-}
+function dotsHTML(n){return [0,1,2,3].map(i=>`<i class="${i<n?'f':''}"></i>`).join('');}
+function setDots(id,n){const el=document.getElementById(id);if(el)el.innerHTML=dotsHTML(n);}
+function shakeBox(id){const el=document.getElementById(id);if(el){el.classList.remove('shakeit');void el.offsetWidth;el.classList.add('shakeit');}}
+function keypad(fn){let b='';for(let i=1;i<=9;i++)b+=`<button onclick="${fn}('${i}')">${i}</button>`;b+=`<button class="blank"></button><button onclick="${fn}('0')">0</button><button onclick="${fn}('del')">⌫</button>`;return `<div class="keypad">${b}</div>`;}
 function setupOverlay(o){
   if(o.step==='name'){
-    return `<div class="setup">
-      <h2>Opret forælderkonto</h2><div class="desc">Hvad hedder du?</div>
-      <input id="pname" value="${esc(o.name||'')}" placeholder="Dit navn" oninput="ui.overlay.name=this.value">
+    return `<div class="setup"><h2>${o.addMode?'Tilføj forælder':'Opret forælderkonto'}</h2><div class="desc">Hvad hedder ${o.addMode?'den nye forælder':'du'}?</div>
+      <input id="pname" value="${esc(o.name||'')}" placeholder="Navn" oninput="ui.overlay.name=this.value">
       <div class="sugg">${['Mor','Far','Bedste'].map(n=>`<button onclick="setSetupName('${n}')">${n}</button>`).join('')}</div>
-      <div class="err">${o.error||''}</div>
-      <button class="np" onclick="setupNameNext()">Næste</button>
-      <button class="cancel" onclick="closeOverlay()">Annullér</button>
-    </div>`;
+      <div class="err" id="setupErr">${o.error||''}</div>
+      <button class="np" onclick="setupNameNext()">Næste</button><button class="cancel" onclick="closeOverlay()">Annullér</button></div>`;
   }
   const pin=o.step==='pin1'?o.pin1:o.pin2;
-  const dots=[0,1,2,3].map(i=>`<i class="${i<pin.length?'f':''}"></i>`).join('');
-  return `<div class="setup ${o.shake?'shakeit':''}">
-    <h2>${o.step==='pin1'?'Vælg en PIN':'Bekræft din PIN'}</h2>
+  return `<div class="setup" id="setupBox"><h2>${o.step==='pin1'?'Vælg en PIN':'Bekræft din PIN'}</h2>
     <div class="desc">${o.step==='pin1'?'4 cifre — den bruger du til at logge ind som forælder.':'Skriv din PIN igen.'}</div>
-    <div class="dots">${dots}</div>
-    <div class="err">${o.error||''}</div>
-    ${keypad('setupPin')}
-    <button class="cancel" onclick="closeOverlay()">Annullér</button>
-  </div>`;
+    <div class="dots" id="setupDots">${dotsHTML(pin.length)}</div><div class="err" id="setupErr">${o.error||''}</div>
+    ${keypad('setupPin')}<button class="cancel" onclick="closeOverlay()">Annullér</button></div>`;
 }
 function pinOverlay(o){
-  const dots=[0,1,2,3].map(i=>`<i class="${i<o.entered.length?'f':''}"></i>`).join('');
   const p=state.parents.find(x=>x.id===o.parentId);
-  return `<div class="setup ${o.shake?'shakeit':''}">
-    <h2>Hej ${esc(p?p.name:'')}</h2><div class="desc">Indtast din PIN</div>
-    <div class="dots">${dots}</div><div class="err">${o.error||''}</div>
-    ${keypad('enterPin')}
-    <button class="cancel" onclick="closeOverlay()">Annullér</button>
-  </div>`;
+  return `<div class="setup" id="pinBox"><h2>Hej ${esc(p?p.name:'')}</h2><div class="desc">Indtast din PIN</div>
+    <div class="dots" id="pinDots">${dotsHTML(o.entered.length)}</div><div class="err" id="pinErr">${o.error||''}</div>
+    ${keypad('enterPin')}<button class="cancel" onclick="closeOverlay()">Annullér</button></div>`;
 }
 function addChildOverlay(o){
-  return `<div class="backdrop"><div class="sheet">
-    <h3 style="font-family:var(--poppins);margin:0 0 4px">Tilføj barn</h3>
-    <label class="fld">Navn</label>
-    <input class="txt" value="${esc(o.name||'')}" placeholder="Barnets navn" oninput="ui.overlay.name=this.value">
-    <label class="fld">Alder</label>
-    <div class="agerow"><button onclick="chAge(-1)">−</button><div class="av">${o.age} år</div><button onclick="chAge(1)">＋</button></div>
+  return `<div class="backdrop"><div class="sheet"><h3>Tilføj barn</h3>
+    <label class="fld">Navn</label><input class="txt" value="${esc(o.name||'')}" placeholder="Barnets navn" oninput="ui.overlay.name=this.value">
+    <label class="fld">Alder</label><div class="agerow"><button onclick="chAge(-1)">−</button><div class="av">${o.age} år</div><button onclick="chAge(1)">＋</button></div>
     <div class="err" style="color:var(--coral-tx)">${o.error||''}</div>
-    <div class="row"><button class="btn ghost" onclick="closeOverlay()">Annullér</button><button class="btn" onclick="confirmAddChild()">Opret</button></div>
-  </div></div>`;
+    <div class="rowbtns"><button class="btn ghost" onclick="closeOverlay()">Annullér</button><button class="btn" onclick="confirmAddChild()">Opret</button></div></div></div>`;
 }
 function confirmOverlay(o){
   const k=currentKid();
-  const ico = o.kind==='reward' ? o.item.icon
-    : avatarHTML(o.kind==='color'?{size:66,bodyColor:o.item.value,hat:k.hat,pants:k.pants}
-      :o.kind==='hat'?{size:66,bodyColor:k.bodyColor,hat:o.item.value,pants:k.pants}
-      :{size:66,bodyColor:k.bodyColor,hat:k.hat,pants:o.item.value});
-  return `<div class="backdrop"><div class="sheet confirm">
-    <div class="cico">${ico}</div>
-    <h3>${esc(o.item.title)}</h3>
-    <div class="line">Du har ${k.points} 🪙</div>
-    <div class="cost2">Denne koster ${o.item.cost} 🪙</div>
-    <div class="cbtns"><button class="no" onclick="closeOverlay()">✕</button><button class="yes" onclick="doRedeem()">✓</button></div>
-  </div></div>`;
+  const ico=o.kind==='reward'?o.item.icon:avatarHTML(o.kind==='color'?{size:66,bodyColor:o.item.value,hat:k.hat,pants:k.pants}:o.kind==='hat'?{size:66,bodyColor:k.bodyColor,hat:o.item.value,pants:k.pants}:{size:66,bodyColor:k.bodyColor,hat:k.hat,pants:o.item.value});
+  return `<div class="backdrop"><div class="sheet confirm"><div class="cico">${ico}</div><h3>${esc(o.item.title)}</h3>
+    <div class="line">Du har ${k.points} 🪙</div><div class="cost2">Denne koster ${o.item.cost} 🪙</div>
+    <div class="cbtns"><button class="no" onclick="closeOverlay()">✕</button><button class="yes" onclick="doRedeem()">✓</button></div></div></div>`;
+}
+function emojiOverlay(o){
+  const set=o.kind==='task'?TASK_EMOJIS:REWARD_EMOJIS;
+  return `<div class="backdrop"><div class="sheet"><h3>Vælg ikon</h3><div class="emoji-grid">${set.map(e=>`<button onclick="setEmoji('${e}')">${e}</button>`).join('')}</div>
+    <div class="rowbtns"><button class="btn ghost" onclick="closeOverlay()">Luk</button></div></div></div>`;
+}
+function delKidOverlay(o){
+  const k=state.kids.find(x=>x.id===o.kidId);
+  return `<div class="backdrop"><div class="sheet"><h3>Slet ${esc(k?k.name:'')}?</h3>
+    <div style="font-size:14px;color:var(--muted);margin-top:6px">Alle point og køb for dette barn slettes. Det kan ikke fortrydes.</div>
+    <div class="rowbtns"><button class="btn ghost" onclick="closeOverlay()">Annullér</button><button class="btn" style="background:#E0468A" onclick="confirmDelKid()">Slet</button></div></div></div>`;
 }
 
-/* ============ Actions ============ */
+/* ===== Actions ===== */
 function go(screen){
-  if((screen==='home'||screen==='shop'||screen==='editor'||screen==='history')&&currentKid()) ui.shownPoints=currentKid().points;
+  if((screen==='home'||screen==='shop'||screen==='editor'||screen==='history')&&currentKid())ui.shownPoints=currentKid().points;
   ui.screen=screen; render();
 }
-function openKid(id){ state.currentKidId=id; ui.shownPoints=(currentKid()||{}).points||0; ui.screen='home'; save(); render(); }
-function toggleTasks(){ ui.tasksOpen=!ui.tasksOpen; render(); }
+function openKid(id){state.currentKidId=id;ui.shownPoints=(currentKid()||{}).points||0;ui.screen='home';save();render();}
+function toggleTasks(){ui.tasksOpen=!ui.tasksOpen;render();}
+function dismissMsg(){const k=currentKid();if(k){k.message=null;save();render();}}
 
 function toggleTask(id,ev){
   const k=currentKid(); const t=state.tasks.find(x=>x.id===id); if(!k||!t)return;
@@ -620,111 +714,136 @@ function toggleTask(id,ev){
   if(!wasDone){
     k.completed[id]=pk; k.points+=t.points; k.totalEarned=(k.totalEarned||0)+t.points;
     save(); render(); countTo(from,k.points); floatText(x,y,'+'+t.points,true); confettiAt(x,y);
-    if(allDone(k) && k.dailyBonusClaimed!==todayKey()){
-      setTimeout(()=>{ const f2=k.points; k.dailyBonusClaimed=todayKey(); k.points+=15; k.totalEarned=(k.totalEarned||0)+15;
-        save(); render(); countTo(f2,k.points); confettiBurstCenter(); toast('🌟 Hele dagen klaret! +15 bonus'); },650);
+    if(allDone(k)&&k.dailyBonusClaimed!==todayKey()){
+      setTimeout(()=>{const f2=k.points;k.dailyBonusClaimed=todayKey();k.points+=15;k.totalEarned=(k.totalEarned||0)+15;save();render();countTo(f2,k.points);confettiBurstCenter();toast('🌟 Hele dagen klaret! +15 bonus');},650);
     }
-  } else {
+  }else{
     delete k.completed[id]; k.points=Math.max(0,k.points-t.points); k.totalEarned=Math.max(0,(k.totalEarned||0)-t.points);
     let msg='Opgave fortrudt';
-    if(k.dailyBonusClaimed===todayKey() && !allDone(k)){
-      k.dailyBonusClaimed=null; k.points=Math.max(0,k.points-15); k.totalEarned=Math.max(0,(k.totalEarned||0)-15);
-      msg='Fortrudt — bonus rullet tilbage (−15)';
-    }
+    if(k.dailyBonusClaimed===todayKey()&&!allDone(k)){k.dailyBonusClaimed=null;k.points=Math.max(0,k.points-15);k.totalEarned=Math.max(0,(k.totalEarned||0)-15);msg='Fortrudt — bonus rullet tilbage (−15)';}
     save(); render(); countTo(from,k.points); floatText(x,y,'−'+t.points,false); toast(msg);
   }
 }
 
 /* parent setup */
-function startParentSetup(){ ui.overlay={type:'setup',step:'name',name:'',pin1:'',pin2:'',error:''}; renderOverlay(); }
-function setSetupName(n){ ui.overlay.name=n; const el=document.getElementById('pname'); if(el)el.value=n; }
-function setupNameNext(){ if(!(ui.overlay.name||'').trim()){ui.overlay.error='Skriv et navn';renderOverlay();return;} ui.overlay.step='pin1';ui.overlay.error='';renderOverlay(); }
+function startParentSetup(){ui.overlay={type:'setup',step:'name',name:'',pin1:'',pin2:'',error:''};renderOverlay();}
+function startAddParent(){ui.overlay={type:'setup',step:'name',name:'',pin1:'',pin2:'',error:'',addMode:true};renderOverlay();}
+function setSetupName(n){ui.overlay.name=n;const el=document.getElementById('pname');if(el)el.value=n;}
+function setupNameNext(){if(!(ui.overlay.name||'').trim()){ui.overlay.error='Skriv et navn';renderOverlay();return;}ui.overlay.step='pin1';ui.overlay.error='';renderOverlay();}
 function setupPin(d){
   const o=ui.overlay; const key=o.step==='pin1'?'pin1':'pin2';
-  if(d==='del'){o[key]=o[key].slice(0,-1);renderOverlay();return;}
-  if(o[key].length>=4)return; o[key]+=d;
+  if(d==='del'){o[key]=o[key].slice(0,-1);setDots('setupDots',o[key].length);return;}
+  if(o[key].length>=4)return;
+  o[key]+=d; setDots('setupDots',o[key].length);
   if(o[key].length===4){
-    if(o.step==='pin1'){ setTimeout(()=>{o.step='pin2';o.error='';renderOverlay();},120); }
+    if(o.step==='pin1'){setTimeout(()=>{o.step='pin2';o.error='';renderOverlay();},170);}
     else{
-      if(o.pin2===o.pin1){ finishParent(o.name,o.pin1); }
-      else{ o.shake=true;o.error='PIN’erne matcher ikke';o.pin1='';o.pin2='';o.step='pin1'; renderOverlay(); setTimeout(()=>{o.shake=false;},450); }
+      if(o.pin2===o.pin1){setTimeout(()=>finishParent(o.name,o.pin1,o.addMode),140);}
+      else{o.error='PIN’erne matcher ikke';o.pin1='';o.pin2='';o.step='pin1';renderOverlay();shakeBox('setupBox');}
     }
   }
-  renderOverlay();
 }
-function finishParent(name,pin){
-  const p={id:uid('p'),name:name.trim(),pin:pin,bodyColor:'#B8C7F0',hat:'👓',pants:''};
-  state.parents.push(p); seedDefaults(); ui.overlay=null; ui.screen='picker'; save(); render();
-  toast('Forælderkonto oprettet 🎉'); setTimeout(()=>{ if(state.kids.length===0) startAddChild(); },500);
+function finishParent(name,pin,addMode){
+  const p={id:uid('p'),name:(name||'').trim(),pin:pin,bodyColor:'#B8C7F0',hat:'👓',pants:''};
+  state.parents.push(p); seedDefaults(); ui.overlay=null; save();
+  if(addMode){ui.screen='parent';ui.parentTab='indstil';render();toast('Forælder tilføjet 🎉');}
+  else{ui.screen='picker';render();toast('Forælderkonto oprettet 🎉');setTimeout(()=>{if(state.kids.length===0)startAddChild();},500);}
 }
 
-/* parent pin (login) */
-function askParentPin(pid){ ui.overlay={type:'pin',parentId:pid,entered:'',error:''}; renderOverlay(); }
+/* parent login */
+function askParentPin(pid){ui.overlay={type:'pin',parentId:pid,entered:'',error:''};renderOverlay();}
 function enterPin(d){
-  const o=ui.overlay; if(d==='del'){o.entered=o.entered.slice(0,-1);renderOverlay();return;}
-  if(o.entered.length>=4)return; o.entered+=d;
+  const o=ui.overlay;
+  if(d==='del'){o.entered=o.entered.slice(0,-1);setDots('pinDots',o.entered.length);return;}
+  if(o.entered.length>=4)return;
+  o.entered+=d; setDots('pinDots',o.entered.length);
   if(o.entered.length===4){
     const p=state.parents.find(x=>x.id===o.parentId);
-    if(p&&p.pin===o.entered){ ui.overlay=null; ui.parentId=p.id; ui.screen='parent'; render(); }
-    else{ o.shake=true;o.error='Forkert kode';o.entered=''; renderOverlay(); setTimeout(()=>{o.shake=false;renderOverlay();},450); }
-  } else renderOverlay();
+    if(p&&p.pin===o.entered){ui.overlay=null;ui.parentId=p.id;ui.parentTab='opgaver';ui.screen='parent';render();}
+    else{o.entered='';setDots('pinDots',0);const e=document.getElementById('pinErr');if(e)e.textContent='Forkert kode';shakeBox('pinBox');}
+  }
 }
 
 /* add child */
-function startAddChild(){ ui.overlay={type:'addChild',name:'',age:6,error:''}; renderOverlay(); }
-function chAge(d){ ui.overlay.age=Math.max(2,Math.min(17,ui.overlay.age+d)); renderOverlay(); }
+function startAddChild(){ui.overlay={type:'addChild',name:'',age:6,error:''};renderOverlay();}
+function chAge(d){ui.overlay.age=Math.max(2,Math.min(17,ui.overlay.age+d));renderOverlay();}
 function confirmAddChild(){
-  const o=ui.overlay; const nm=(o.name||'').trim();
-  if(!nm){o.error='Skriv et navn';renderOverlay();return;}
+  const o=ui.overlay; const nm=(o.name||'').trim(); if(!nm){o.error='Skriv et navn';renderOverlay();return;}
   const idx=state.kids.length;
-  const k={id:uid('k'),name:nm,age:o.age,color:KID_COLORS[idx%KID_COLORS.length],
-    points:0,totalEarned:0,bodyColor:['#FFB6D9','#AEDFF7','#B8E8B0','#FFFFFF'][idx%4],hat:'',pants:'',
+  const k={id:uid('k'),name:nm,age:o.age,color:KID_COLORS[idx%KID_COLORS.length],points:0,totalEarned:0,
+    bodyColor:['#FFB6D9','#AEDFF7','#B8E8B0','#FFFFFF'][idx%4],hat:'',pants:'',
     ownedColors:['#FFFFFF','#FFB6D9','#B8E8B0','#AEDFF7'],ownedHats:[''],ownedPants:[''],
-    completed:{},redeemedToday:{},redemptions:[],dailyBonusClaimed:null};
+    completed:{},redeemedToday:{},redemptions:[],dailyBonusClaimed:null,message:null};
   state.kids.push(k); ui.overlay=null; save();
-  if(ui.screen==='welcome'||ui.screen==='picker'){ ui.screen='picker'; }
+  if(ui.screen==='welcome')ui.screen='picker';
   render(); toast(nm+' er tilføjet 🎈');
 }
+function askDelKid(id){ui.overlay={type:'delkid',kidId:id};renderOverlay();}
+function confirmDelKid(){const id=ui.overlay.kidId;state.kids=state.kids.filter(k=>k.id!==id);if(state.currentKidId===id)state.currentKidId=null;ui.overlay=null;save();render();}
 
 /* redeem */
 function askRedeem(kind,idOrVal){
-  const k=currentKid();
-  let item;
-  if(kind==='reward') item=state.rewards.find(r=>r.id===idOrVal);
-  else{ const arr=kind==='color'?COLORS:kind==='hat'?HATS:PANTS; item=arr.find(i=>i.value===idOrVal); }
+  const k=currentKid(); let item;
+  if(kind==='reward')item=state.rewards.find(r=>r.id===idOrVal);
+  else{const arr=kind==='color'?COLORS:kind==='hat'?HATS:PANTS;item=arr.find(i=>i.value===idOrVal);}
   if(!item||k.points<item.cost)return;
-  ui.overlay={type:'confirm',kind:kind,item:item}; renderOverlay();
+  ui.overlay={type:'confirm',kind:kind,item:item};renderOverlay();
 }
 function doRedeem(){
   const o=ui.overlay; const k=currentKid(); const from=k.points;
   if(k.points<o.item.cost){closeOverlay();return;}
   k.points-=o.item.cost;
-  if(o.kind==='reward'){ if(!k.redeemedToday)k.redeemedToday={}; k.redeemedToday[o.item.id]=todayKey(); }
-  else{ ownedList(k,o.kind).push(o.item.value); }
+  const cat=o.kind==='reward'?o.item.category:'Avatar';
+  if(o.kind==='reward'){if(!k.redeemedToday)k.redeemedToday={};k.redeemedToday[o.item.id]=todayKey();}
+  else{ownedList(k,o.kind).push(o.item.value);}
   k.redemptions=k.redemptions||[]; k.redemptions.push({icon:o.kind==='reward'?o.item.icon:'🎨',title:o.item.title,cost:o.item.cost,when:Date.now()});
+  if(state.notifyCategories[cat]!==false)state.notifications.push({icon:o.kind==='reward'?o.item.icon:'🎨',kidName:k.name,title:o.item.title,cost:o.item.cost,when:Date.now(),category:cat});
   ui.overlay=null; save(); render(); countTo(from,k.points); confettiBurstCenter();
   toast(o.kind==='reward'?'Indløst! 🎉':'Købt! Skift den i Min profil 🎨');
 }
 
 /* editor */
-function equip(kind,val){ const k=currentKid(); if(kind==='color')k.bodyColor=val; else if(kind==='hat')k.hat=val; else k.pants=val; save(); render(); }
-function renameKid(v){ const k=currentKid(); k.name=(v||'').trim()||k.name; save(); }
-function toShop(){ ui.screen='shop'; render(); toast('Køb den først i butikken 🍋'); }
+function equip(kind,val){const k=currentKid();if(kind==='color')k.bodyColor=val;else if(kind==='hat')k.hat=val;else k.pants=val;save();render();}
+function renameKid(v){const k=currentKid();k.name=(v||'').trim()||k.name;save();}
+function toShop(){ui.screen='shop';render();toast('Køb den først i butikken 🍋');}
 
-function closeOverlay(){ ui.overlay=null; renderOverlay(); }
+/* parent tabs — tasks */
+function setParentTab(t){ui.parentTab=t;ui.editId=null;ui.editRewardId=null;render();}
+function addTask(){const t={id:uid('t'),icon:'✅',title:'Ny opgave',points:5,repeat:'daily',active:true};state.tasks.unshift(t);ui.editId=t.id;save();render();}
+function toggleEdit(id){ui.editId=ui.editId===id?null:id;render();}
+function setTaskTitle(id,v){const t=state.tasks.find(x=>x.id===id);if(t){t.title=(v||'').trim()||'Opgave';save();render();}}
+function setTaskPoints(id,d){const t=state.tasks.find(x=>x.id===id);if(t){t.points=Math.max(1,t.points+d);save();render();}}
+function setTaskActive(id,ch){const t=state.tasks.find(x=>x.id===id);if(t){t.active=ch;save();render();}}
+function cycleRepeat(id){const t=state.tasks.find(x=>x.id===id);if(t){t.repeat=REPEATS[(REPEATS.indexOf(t.repeat)+1)%REPEATS.length];save();render();}}
+function delTask(id){state.tasks=state.tasks.filter(x=>x.id!==id);if(ui.editId===id)ui.editId=null;save();render();}
+/* rewards */
+function addReward(){const r={id:uid('r'),icon:'🎁',title:'Ny præmie',cost:50,category:'Privilegier',active:true};state.rewards.unshift(r);ui.editRewardId=r.id;save();render();}
+function toggleEditR(id){ui.editRewardId=ui.editRewardId===id?null:id;render();}
+function setRewardTitle(id,v){const r=state.rewards.find(x=>x.id===id);if(r){r.title=(v||'').trim()||'Præmie';save();render();}}
+function setRewardCost(id,d){const r=state.rewards.find(x=>x.id===id);if(r){r.cost=Math.max(5,r.cost+d);save();render();}}
+function setRewardCat(id,c){const r=state.rewards.find(x=>x.id===id);if(r){r.category=c;save();render();}}
+function setRewardActive(id,ch){const r=state.rewards.find(x=>x.id===id);if(r){r.active=ch;save();render();}}
+function delReward(id){state.rewards=state.rewards.filter(x=>x.id!==id);if(ui.editRewardId===id)ui.editRewardId=null;save();render();}
+/* emoji */
+function pickEmoji(kind,id){ui.overlay={type:'emoji',kind:kind,id:id};renderOverlay();}
+function setEmoji(e){const o=ui.overlay;if(o.kind==='task'){const t=state.tasks.find(x=>x.id===o.id);if(t)t.icon=e;}else{const r=state.rewards.find(x=>x.id===o.id);if(r)r.icon=e;}ui.overlay=null;save();render();}
+/* overblik */
+function sendMsg(kidId){const el=document.getElementById('msg_'+kidId);if(!el)return;const txt=el.value.trim();const k=state.kids.find(x=>x.id===kidId);if(k){k.message=txt?{text:txt,from:currentParent().name,when:Date.now()}:null;save();render();toast(txt?('Besked sendt til '+k.name+' 💬'):'Besked fjernet');}}
+/* indstillinger */
+function setNotify(cat,ch){state.notifyCategories[cat]=ch;save();render();}
 
-/* ============ Effects ============ */
+function closeOverlay(){ui.overlay=null;renderOverlay();}
+
+/* ===== Effects ===== */
 function countTo(from,to){
-  ui.shownPoints=to;
-  const el=document.getElementById('pts'); if(!el){return;}
+  ui.shownPoints=to; const el=document.getElementById('pts'); if(!el)return;
   const steps=16; let i=0; el.textContent=from;
-  const iv=setInterval(()=>{i++; el.textContent=Math.round(from+(to-from)*i/steps); if(i>=steps){clearInterval(iv);el.textContent=to;}},22);
+  const iv=setInterval(()=>{i++;el.textContent=Math.round(from+(to-from)*i/steps);if(i>=steps){clearInterval(iv);el.textContent=to;}},22);
   const p=document.getElementById('pill'); if(p){p.style.animation='none';void p.offsetWidth;p.style.animation='bouncePill .4s ease';}
 }
 function floatText(x,y,txt,pos){
   const f=document.getElementById('frame').getBoundingClientRect();
-  const d=document.createElement('div'); d.className='float'; d.textContent=txt;
-  d.style.color=pos?'#4C7A00':'#C7451B';
+  const d=document.createElement('div'); d.className='float'; d.textContent=txt; d.style.color=pos?'#4C7A00':'#C7451B';
   d.style.left=((x||f.width/2)-f.left-8)+'px'; d.style.top=((y||120)-f.top-10)+'px';
   document.getElementById('frame').appendChild(d); setTimeout(()=>d.remove(),1000);
 }
@@ -738,14 +857,12 @@ function confettiAt(x,y){
     c.style.setProperty('--dx',Math.cos(a)*dist+'px');c.style.setProperty('--dy',Math.sin(a)*dist+'px');
     c.style.setProperty('--rot',(Math.random()*540-270)+'deg');fr.appendChild(c);setTimeout(()=>c.remove(),820);}
 }
-function confettiBurstCenter(){ const f=document.getElementById('frame').getBoundingClientRect(); confettiAt(f.left+f.width/2,f.top+f.height*0.32); }
+function confettiBurstCenter(){const f=document.getElementById('frame').getBoundingClientRect();confettiAt(f.left+f.width/2,f.top+f.height*0.32);}
 let toastT;
-function toast(m){ let t=document.querySelector('.toast'); if(t)t.remove();
-  t=document.createElement('div');t.className='toast';t.textContent=m;document.getElementById('frame').appendChild(t);
-  clearTimeout(toastT);toastT=setTimeout(()=>t.remove(),2100); }
+function toast(m){let t=document.querySelector('.toast');if(t)t.remove();t=document.createElement('div');t.className='toast';t.textContent=m;document.getElementById('frame').appendChild(t);clearTimeout(toastT);toastT=setTimeout(()=>t.remove(),2100);}
 
-/* ============ Init ============ */
-if(state.parents.length>0){ seedDefaults(); ui.screen='picker'; } else { ui.screen='welcome'; }
+/* ===== Init ===== */
+if(state.parents.length>0){seedDefaults();ui.screen='picker';}else{ui.screen='welcome';}
 render();
 </script>
 </body>
