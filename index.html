@@ -235,7 +235,7 @@
 </head>
 <body>
 <div class="frame" id="frame">
-  <div class="stagebadge">FASE 2</div>
+  <div class="stagebadge">FASE 3</div>
   <div id="app"></div>
   <div id="overlay"></div>
 </div>
@@ -311,7 +311,8 @@ const REWARD_EMOJIS=['🎬','🍕','🍦','📱','🛌','🎮','🍭','🎡','�
 /* ===== State ===== */
 const KEY='pling_v1';
 let state=normalize(load());
-let ui={screen:'welcome',shownPoints:0,overlay:null,tasksOpen:true,parentTab:'opgaver',editId:null,editRewardId:null,parentId:null};
+let ui={screen:'loading',shownPoints:0,overlay:null,tasksOpen:true,parentTab:'opgaver',editId:null,editRewardId:null,parentId:null,currentKidId:null,authMode:'login',authError:''};
+let cloudUser=null, lastRaw=null, pendingSignupName='';
 function normalize(s){
   s=s||{}; s.seq=s.seq||1; s.parents=s.parents||[]; s.kids=s.kids||[]; s.tasks=s.tasks||[]; s.rewards=s.rewards||[];
   s.notifications=s.notifications||[]; s.notifyCategories=s.notifyCategories||{Oplevelser:true,Privilegier:true,Avatar:true};
@@ -323,7 +324,8 @@ function normalize(s){
   return s;
 }
 function load(){ try{const v=localStorage.getItem(KEY); return v?JSON.parse(v):null;}catch(e){return null;} }
-function save(){ try{localStorage.setItem(KEY,JSON.stringify(state));}catch(e){} }
+function cloudData(s){return {seq:s.seq,parents:s.parents,kids:s.kids,tasks:s.tasks,rewards:s.rewards,notifications:s.notifications,notifyCategories:s.notifyCategories};}
+function save(){ const payload=cloudData(state); if(window.cloud&&cloudUser)window.cloud.save(payload); try{localStorage.setItem(KEY,JSON.stringify(state));}catch(e){} }
 function uid(p){ state.seq=(state.seq||1)+1; return p+state.seq; }
 
 function seedDefaults(){
@@ -373,7 +375,7 @@ function relTime(ts){
 }
 
 /* ===== Helpers ===== */
-function currentKid(){return state.kids.find(k=>k.id===state.currentKidId);}
+function currentKid(){return state.kids.find(k=>k.id===ui.currentKidId);}
 function currentParent(){return state.parents.find(x=>x.id===ui.parentId)||state.parents[0];}
 function activeTasks(){return state.tasks.filter(t=>t.active!==false);}
 function taskAppliesTo(kid,t){
@@ -403,7 +405,9 @@ const app=document.getElementById('app');
 function render(){
   const same=ui._rendered===ui.screen; const _sc=app.querySelector('.scroll'); const _st=(same&&_sc)?_sc.scrollTop:0;
   let h='';
-  if(ui.screen==='welcome')h=welcomeScreen();
+  if(ui.screen==='loading')h=loadingScreen();
+  else if(ui.screen==='auth')h=authScreen();
+  else if(ui.screen==='welcome')h=welcomeScreen();
   else if(ui.screen==='picker')h=pickerScreen();
   else if(ui.screen==='home')h=homeScreen();
   else if(ui.screen==='shop')h=shopScreen();
@@ -437,6 +441,37 @@ function welcomeScreen(){
     <button class="link" onclick="toast('Barne-login med kode kommer i Fase 4 🔑')">Er du et barn? <b>Indtast din kode</b></button>
   </div>`;
 }
+function loadingScreen(){return `<div class="scr welcome"><div>${avatarHTML({size:84,bodyColor:'#FFB6D9',hat:'🎩'})}</div><h1 style="font-size:24px">Pling</h1><p>Forbinder…</p></div>`;}
+function authScreen(){
+  const s=ui.authMode==='signup';
+  return `<div class="scr welcome">
+    <div>${avatarHTML({size:80,bodyColor:'#FFB6D9',hat:'🎩'})}</div>
+    <span class="wtag">Arbejdstitel</span><h1 style="font-size:26px">Pling</h1>
+    <p>${s?'Opret din forælderkonto for at komme i gang.':'Log ind for at fortsætte.'}</p>
+    <div style="width:100%;max-width:300px;display:flex;flex-direction:column;gap:10px;margin-top:4px">
+      ${s?`<input class="txt" id="authName" placeholder="Dit navn">`:''}
+      <input class="txt" id="authEmail" type="email" placeholder="E-mail">
+      <input class="txt" id="authPass" type="password" placeholder="Adgangskode (min. 6 tegn)">
+      <div class="err" id="authErr" style="color:var(--coral-tx);min-height:0;text-align:center">${esc(ui.authError||'')}</div>
+      <button class="cta" id="authBtn" style="margin-top:0;width:100%" onclick="${s?'doSignup()':'doLogin()'}">${s?'Opret konto':'Log ind'}</button>
+    </div>
+    <button class="link" onclick="toggleAuthMode()">${s?'Har du allerede en konto? <b>Log ind</b>':'Ny her? <b>Opret konto</b>'}</button>
+  </div>`;
+}
+function av(id){const e=document.getElementById(id);return e?e.value.trim():'';}
+function toggleAuthMode(){ui.authMode=ui.authMode==='signup'?'login':'signup';ui.authError='';render();}
+function setAuthBusy(t){const b=document.getElementById('authBtn');if(b){b.textContent=t;b.style.opacity='.7';}}
+function friendlyAuthError(err){const c=(err&&(err.code||err.message))||'';if(c.indexOf('email-already-in-use')>=0)return 'E-mailen er allerede i brug — prøv at logge ind.';if(c.indexOf('invalid-email')>=0)return 'Ugyldig e-mail.';if(c.indexOf('weak-password')>=0)return 'Adgangskoden er for svag (min. 6 tegn).';if(c.indexOf('wrong-password')>=0||c.indexOf('invalid-credential')>=0)return 'Forkert e-mail eller adgangskode.';if(c.indexOf('user-not-found')>=0)return 'Ingen konto med den e-mail.';if(c.indexOf('network')>=0)return 'Netværksfejl — tjek din forbindelse.';return 'Noget gik galt. Prøv igen.';}
+function authFail(err){ui.authError=friendlyAuthError(err);render();}
+function doSignup(){const n=av('authName'),e=av('authEmail'),p=av('authPass');if(!n){ui.authError='Skriv dit navn';render();return;}if(!e||p.length<6){ui.authError='Tjek e-mail og adgangskode (min. 6 tegn)';render();return;}pendingSignupName=n;ui.authError='';setAuthBusy('Opretter…');if(window.cloud)window.cloud.signup(e,p).catch(authFail);else authFail({code:'network'});}
+function doLogin(){const e=av('authEmail'),p=av('authPass');if(!e||!p){ui.authError='Skriv e-mail og adgangskode';render();return;}ui.authError='';setAuthBusy('Logger ind…');if(window.cloud)window.cloud.login(e,p).catch(authFail);else authFail({code:'network'});}
+function logout(){ui.currentKidId=null;ui.parentId=null;ui.overlay=null;if(window.cloud)window.cloud.logout();}
+window.onCloudError=function(e){try{console.warn('cloud',e&&(e.code||e.message||e));}catch(_){}};
+window.onAuth=function(user){cloudUser=user||null;if(!user){ui.screen='auth';render();}};
+window.onFamily=function(user,data){
+  if(data){const raw=JSON.stringify(data);if(raw===lastRaw)return;lastRaw=raw;state=normalize(data);if((!ui.parentId||!state.parents.find(function(x){return x.id===ui.parentId;}))&&state.parents[0])ui.parentId=state.parents[0].id;if(ui.screen==='auth'||ui.screen==='loading')ui.screen='picker';render();}
+  else{state=normalize({});const p={id:uid('p'),name:pendingSignupName||'Forælder',pin:null,bodyColor:'#B8C7F0',hat:'👓',pants:''};state.parents=[p];ui.parentId=p.id;seedDefaults();lastRaw=null;ui.screen='picker';save();render();}
+};
 function pickerScreen(){
   const kids=state.kids.map(k=>`
     <div class="pcard" onclick="openKid('${k.id}')">
@@ -662,6 +697,8 @@ function tabIndstil(){
   return `<div style="padding-bottom:20px"><div class="set-h">Forældre-konti</div>${plist}
     <div class="setrow" style="justify-content:center;cursor:pointer;color:var(--purple);font-family:var(--poppins);font-weight:600" onclick="startAddParent()">＋ Tilføj forælder</div>
     <div class="set-h">Få besked når børnene indløser</div>${toggle('Oplevelser','🎉 Oplevelser')}${toggle('Privilegier','⭐ Privilegier')}${toggle('Avatar','🎨 Avatar')}
+    <div class="set-h">Konto</div>
+    <div class="setrow"><div class="t">Logget ind som forælder</div><button class="btn ghost" style="padding:9px 16px" onclick="logout()">Log ud</button></div>
     <div class="set-h">Seneste</div>${feedHtml}</div>`;
 }
 
@@ -728,7 +765,7 @@ function go(screen){
   if((screen==='home'||screen==='shop'||screen==='editor'||screen==='history')&&currentKid())ui.shownPoints=currentKid().points;
   ui.screen=screen; render();
 }
-function openKid(id){state.currentKidId=id;ui.shownPoints=(currentKid()||{}).points||0;ui.screen='home';save();render();}
+function openKid(id){ui.currentKidId=id;ui.shownPoints=(currentKid()||{}).points||0;ui.screen='home';render();}
 function toggleTasks(){ui.tasksOpen=!ui.tasksOpen;render();}
 function dismissMsg(){const k=currentKid();if(k){k.message=null;save();render();}}
 
@@ -771,7 +808,7 @@ function finishParent(name,pin,addMode){
   if(addMode){ui.screen='parent';ui.parentTab='indstil';render();toast('Forælder tilføjet 🎉');}
   else{ui.screen='picker';render();toast('Forælderkonto oprettet 🎉');setTimeout(()=>{if(state.kids.length===0)startAddChild();},500);}
 }
-function askParentPin(pid){ui.overlay={type:'pin',parentId:pid,entered:'',error:''};renderOverlay();}
+function askParentPin(pid){const p=state.parents.find(x=>x.id===pid);if(p&&!p.pin){ui.parentId=pid;ui.parentTab='opgaver';ui.screen='parent';render();return;}ui.overlay={type:'pin',parentId:pid,entered:'',error:''};renderOverlay();}
 function enterPin(d){
   const o=ui.overlay;
   if(d==='del'){o.entered=o.entered.slice(0,-1);setDots('pinDots',o.entered.length);return;}
@@ -794,7 +831,7 @@ function confirmAddChild(){
   state.kids.push(k); ui.overlay=null; save(); if(ui.screen==='welcome')ui.screen='picker'; render(); toast(nm+' er tilføjet 🎈');
 }
 function askDelKid(id){ui.overlay={type:'delkid',kidId:id};renderOverlay();}
-function confirmDelKid(){const id=ui.overlay.kidId;state.kids=state.kids.filter(k=>k.id!==id);if(state.currentKidId===id)state.currentKidId=null;ui.overlay=null;save();render();}
+function confirmDelKid(){const id=ui.overlay.kidId;state.kids=state.kids.filter(k=>k.id!==id);if(ui.currentKidId===id)ui.currentKidId=null;ui.overlay=null;save();render();}
 
 function askRedeem(kind,idOrVal){
   const k=currentKid(); let item;
@@ -891,9 +928,29 @@ window.addEventListener('popstate',function(){
 });
 
 /* ===== Init ===== */
-if(state.parents.length>0){seedDefaults();ui.screen='picker';}else{ui.screen='welcome';}
-render();
+ui.screen='loading'; render();
 try{history.pushState(null,'');}catch(e){}
+setTimeout(function(){ if(ui.screen==='loading'){ ui.screen='auth'; render(); } },4000);
+</script>
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
+  import { getAuth, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
+  import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
+  try{
+    const cfg={apiKey:"AIzaSyD3xcxmum8kO70g0q1tDFMYIU25Mb-blOM",authDomain:"pling-4fc0b.firebaseapp.com",projectId:"pling-4fc0b",storageBucket:"pling-4fc0b.firebasestorage.app",messagingSenderId:"800464506788",appId:"1:800464506788:web:0a141f49711bc026a5fb31"};
+    const app=initializeApp(cfg); const auth=getAuth(app); const db=getFirestore(app); let unsub=null;
+    window.cloud={
+      signup:function(e,p){return createUserWithEmailAndPassword(auth,e,p);},
+      login:function(e,p){return signInWithEmailAndPassword(auth,e,p);},
+      logout:function(){return signOut(auth);},
+      save:function(data){ if(auth.currentUser) return setDoc(doc(db,'families',auth.currentUser.uid),data); }
+    };
+    onAuthStateChanged(auth,function(user){
+      if(unsub){unsub();unsub=null;}
+      if(user){ unsub=onSnapshot(doc(db,'families',user.uid),function(snap){ if(window.onFamily)window.onFamily(user,snap.exists()?snap.data():null); },function(err){ if(window.onCloudError)window.onCloudError(err); }); }
+      if(window.onAuth)window.onAuth(user);
+    });
+  }catch(e){ if(window.onCloudError)window.onCloudError(e); }
 </script>
 </body>
 </html>
