@@ -235,7 +235,7 @@
 </head>
 <body>
 <div class="frame" id="frame">
-  <div class="stagebadge">FASE 3</div>
+  <div class="stagebadge">FASE 4</div>
   <div id="app"></div>
   <div id="overlay"></div>
 </div>
@@ -311,11 +311,13 @@ const REWARD_EMOJIS=['🎬','🍕','🍦','📱','🛌','🎮','🍭','🎡','�
 /* ===== State ===== */
 const KEY='pling_v1';
 let state=normalize(load());
-let ui={screen:'loading',shownPoints:0,overlay:null,tasksOpen:true,parentTab:'opgaver',editId:null,editRewardId:null,parentId:null,currentKidId:null,authMode:'login',authError:''};
+let ui={screen:'loading',shownPoints:0,overlay:null,tasksOpen:true,parentTab:'opgaver',editId:null,editRewardId:null,parentId:null,currentKidId:null,authMode:'login',authError:'',familyId:null,cloudMsg:'',invited:false};
 let cloudUser=null, lastWritten=null, pendingSignupName='';
+try{if(/[?&]family=/.test(location.search)){ui.authMode='signup';ui.invited=true;}}catch(e){}
 function normalize(s){
   s=s||{}; s.seq=s.seq||1; s.parents=s.parents||[]; s.kids=s.kids||[]; s.tasks=s.tasks||[]; s.rewards=s.rewards||[];
   s.notifications=s.notifications||[]; s.notifyCategories=s.notifyCategories||{Oplevelser:true,Privilegier:true,Avatar:true};
+  if(!Array.isArray(s.allowedEmails))s.allowedEmails=[];
   if(s.currentKidId===undefined)s.currentKidId=null;
   s.tasks.forEach(t=>{if(t.assignMode==null){t.assignMode='age';t.minAge=2;t.maxAge=18;} if(t.kidIds==null)t.kidIds=[]; if(t.weekdays==null)t.weekdays=[];});
   s.rewards.forEach(r=>{if(r.reset==null)r.reset='daily';});
@@ -324,7 +326,7 @@ function normalize(s){
   return s;
 }
 function load(){ try{const v=localStorage.getItem(KEY); return v?JSON.parse(v):null;}catch(e){return null;} }
-function cloudData(s){return {seq:s.seq,parents:s.parents,kids:s.kids,tasks:s.tasks,rewards:s.rewards,notifications:s.notifications,notifyCategories:s.notifyCategories};}
+function cloudData(s){return {seq:s.seq,parents:s.parents,kids:s.kids,tasks:s.tasks,rewards:s.rewards,notifications:s.notifications,notifyCategories:s.notifyCategories,allowedEmails:s.allowedEmails||[]};}
 function save(){ const payload=cloudData(state); lastWritten=JSON.stringify(payload); if(window.cloud&&cloudUser)window.cloud.save(payload); try{localStorage.setItem(KEY,JSON.stringify(state));}catch(e){} }
 function uid(p){ state.seq=(state.seq||1)+1; return p+state.seq; }
 
@@ -393,6 +395,7 @@ function allDone(kid){const a=tasksForKidToday(kid);return a.length>0 && a.every
 function redeemedNow(k,r){return (k.redeemed||{})[r.id]===rewardPeriodKey(r.reset||'daily');}
 function ownedList(k,kind){return kind==='color'?k.ownedColors:kind==='hat'?k.ownedHats:k.ownedPants;}
 function esc(s){return (s==null?'':''+s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+function emailName(e){var s=((e||'').split('@')[0]||'Forælder').replace(/[._-]+/g,' ').trim();return s?s.charAt(0).toUpperCase()+s.slice(1):'Forælder';}
 function assignSummary(t){
   const mode=t.assignMode||'age';
   if(mode==='kids'){const n=(t.kidIds||[]).length;return n?` · ${n} valgte`:' · ingen valgt';}
@@ -415,6 +418,7 @@ function render(){
   else if(ui.screen==='editor')h=editorScreen();
   else if(ui.screen==='pavatar')h=pavatarScreen();
   else if(ui.screen==='parent')h=parentScreen();
+  else if(ui.screen==='cloudmsg')h=cloudmsgScreen();
   app.innerHTML=h;
   const _sc2=app.querySelector('.scroll'); if(_sc2)_sc2.scrollTop=_st;
   ui._rendered=ui.screen;
@@ -442,11 +446,13 @@ function welcomeScreen(){
   </div>`;
 }
 function loadingScreen(){return `<div class="scr welcome"><div>${avatarHTML({size:84,bodyColor:'#FFB6D9',hat:'🎩'})}</div><h1 style="font-size:24px">Pling</h1><p>Forbinder…</p></div>`;}
+function cloudmsgScreen(){return `<div class="scr welcome"><div>${avatarHTML({size:72,bodyColor:'#FFB6D9',hat:'🎩'})}</div><h1 style="font-size:22px">Hov…</h1><p>${esc(ui.cloudMsg||'Noget gik galt med forbindelsen.')}</p><button class="cta" onclick="logout()">Log ud og prøv igen</button></div>`;}
 function authScreen(){
   const s=ui.authMode==='signup';
   return `<div class="scr welcome">
     <div>${avatarHTML({size:80,bodyColor:'#FFB6D9',hat:'🎩'})}</div>
     <span class="wtag">Arbejdstitel</span><h1 style="font-size:26px">Pling</h1>
+    ${ui.invited?`<div class="goldbar" style="margin:0 0 2px">🎉 Du er inviteret! Opret din konto med din egen adgangskode for at deltage i familien.</div>`:''}
     <p>${s?'Opret din forælderkonto for at komme i gang.':'Log ind for at fortsætte.'}</p>
     <form autocomplete="on" onsubmit="event.preventDefault();${s?'doSignup()':'doLogin()'};return false;" style="width:100%;max-width:300px;display:flex;flex-direction:column;gap:10px;margin-top:4px">
       ${s?`<input class="txt" id="authName" name="name" autocomplete="name" placeholder="Dit navn">`:''}
@@ -465,13 +471,49 @@ function friendlyAuthError(err){const c=(err&&(err.code||err.message))||'';if(c.
 function authFail(err){ui.authError=friendlyAuthError(err);render();}
 function doSignup(){const n=av('authName'),e=av('authEmail'),p=av('authPass');if(!n){ui.authError='Skriv dit navn';render();return;}if(!e||p.length<6){ui.authError='Tjek e-mail og adgangskode (min. 6 tegn)';render();return;}pendingSignupName=n;ui.authError='';setAuthBusy('Opretter…');if(window.cloud)window.cloud.signup(e,p).catch(authFail);else authFail({code:'network'});}
 function doLogin(){const e=av('authEmail'),p=av('authPass');if(!e||!p){ui.authError='Skriv e-mail og adgangskode';render();return;}ui.authError='';setAuthBusy('Logger ind…');if(window.cloud)window.cloud.login(e,p).catch(authFail);else authFail({code:'network'});}
-function logout(){ui.currentKidId=null;ui.parentId=null;ui.overlay=null;if(window.cloud)window.cloud.logout();}
-window.onCloudError=function(e){try{console.warn('cloud',e&&(e.code||e.message||e));}catch(_){}};
+function logout(){ui.currentKidId=null;ui.parentId=null;ui.overlay=null;ui.familyId=null;ui.cloudMsg='';lastWritten=null;if(window.cloud)window.cloud.logout();}
+window.onCloudError=function(e){
+  var c=String((e&&(e.code||e.message))||'');
+  try{console.warn('cloud',c);}catch(_){}
+  if(c.indexOf('permission-denied')>=0){
+    ui.cloudMsg='Du har ikke adgang til denne familie endnu. Fulgte du et invitationslink, så bed forælderen om at tilføje din e-mail, og prøv igen. Log evt. ud og ind igen.';
+    ui.screen='cloudmsg'; render();
+  }
+};
 window.onAuth=function(user){cloudUser=user||null;if(!user){ui.screen='auth';render();}};
-window.onFamily=function(user,data,pending){
+window.onFamily=function(user,data,pending,fid){
+  if(fid)ui.familyId=fid;
   if(pending)return; // vores egen lokale skrivning — lokal state er allerede opdateret
-  if(data){const raw=JSON.stringify(data);if(raw===lastWritten)return;lastWritten=raw;state=normalize(data);if((!ui.parentId||!state.parents.find(function(x){return x.id===ui.parentId;}))&&state.parents[0])ui.parentId=state.parents[0].id;if(ui.screen==='auth'||ui.screen==='loading')ui.screen='picker';render();}
-  else{state=normalize({});const p={id:uid('p'),name:pendingSignupName||'Forælder',pin:null,bodyColor:'#B8C7F0',hat:'👓',pants:''};state.parents=[p];ui.parentId=p.id;seedDefaults();ui.screen='picker';save();render();}
+  var myEmail=((user&&user.email)||'').toLowerCase();
+  var isFounder=!!(user&&fid&&fid===user.uid);
+  if(data){
+    const raw=JSON.stringify(data);
+    if(raw===lastWritten){ if(ui.screen==='auth'||ui.screen==='loading'||ui.screen==='cloudmsg'){ui.screen='picker';render();} return; }
+    lastWritten=raw; state=normalize(data);
+    var changed=false;
+    if(isFounder&&myEmail){
+      if(state.allowedEmails.map(function(e){return (e||'').toLowerCase();}).indexOf(myEmail)<0){state.allowedEmails.push(myEmail);changed=true;}
+      if(state.parents[0]&&!state.parents[0].email){state.parents[0].email=myEmail;changed=true;}
+    }
+    var mine=myEmail?state.parents.find(function(p){return (p.email||'').toLowerCase()===myEmail;}):null;
+    if(!mine&&myEmail&&!isFounder){
+      var np={id:uid('p'),name:pendingSignupName||emailName(myEmail),email:myEmail,pin:null,bodyColor:'#B8C7F0',hat:'👓',pants:''};
+      state.parents.push(np); mine=np; changed=true;
+    }
+    if(mine)ui.parentId=mine.id;
+    else if((!ui.parentId||!state.parents.find(function(x){return x.id===ui.parentId;}))&&state.parents[0])ui.parentId=state.parents[0].id;
+    if(changed)save();
+    if(ui.screen==='auth'||ui.screen==='loading'||ui.screen==='cloudmsg')ui.screen='picker';
+    render();
+  } else {
+    if(!isFounder){
+      ui.cloudMsg='Vi kunne ikke finde familien bag linket endnu. Bed forælderen om at sende invitationen igen, eller log ind med den konto der oprettede familien.';
+      ui.screen='cloudmsg'; render(); return;
+    }
+    state=normalize({}); state.allowedEmails=myEmail?[myEmail]:[];
+    const p={id:uid('p'),name:pendingSignupName||'Forælder',email:myEmail||null,pin:null,bodyColor:'#B8C7F0',hat:'👓',pants:''};
+    state.parents=[p]; ui.parentId=p.id; seedDefaults(); ui.screen='picker'; save(); render();
+  }
 };
 function pickerScreen(){
   const kids=state.kids.map(k=>`
@@ -690,13 +732,14 @@ function tabOverblik(){
   }).join('')+'</div>';
 }
 function tabIndstil(){
-  const plist=state.parents.map(p=>`<div class="setrow">${avatarHTML({size:34,bodyColor:p.bodyColor||'#B8C7F0',hat:p.hat||'👓'})}<div class="t">${esc(p.name)}</div></div>`).join('');
+  const plist=state.parents.map(p=>`<div class="setrow">${avatarHTML({size:34,bodyColor:p.bodyColor||'#B8C7F0',hat:p.hat||'👓'})}<div class="t">${esc(p.name)}${p.email?`<div style="font-size:11.5px;color:var(--muted2);font-weight:400">${esc(p.email)}</div>`:''}</div></div>`).join('');
   const nc=state.notifyCategories;
   const toggle=(cat,lbl)=>`<div class="setrow"><div class="t">${lbl}</div><label class="sw"><input type="checkbox" ${nc[cat]!==false?'checked':''} onchange="setNotify('${cat}',this.checked)"><span></span></label></div>`;
   const feed=state.notifications.slice(-8).reverse();
   const feedHtml=feed.length?feed.map(n=>`<div class="setrow"><span style="font-size:18px">${n.icon}</span><div class="t"><b>${esc(n.kidName)}</b> indløste ${esc(n.title)}<div style="font-size:11.5px;color:var(--muted2);font-weight:400">${relTime(n.when)} · ${esc(n.category)}</div></div></div>`).join(''):'<div class="empty">Ingen endnu</div>';
   return `<div style="padding-bottom:20px"><div class="set-h">Forældre-konti</div>${plist}
-    <div class="setrow" style="justify-content:center;cursor:pointer;color:var(--purple);font-family:var(--poppins);font-weight:600" onclick="startAddParent()">＋ Tilføj forælder</div>
+    <div class="setrow" style="justify-content:center;cursor:pointer;color:var(--purple);font-family:var(--poppins);font-weight:600" onclick="startAddParent()">＋ Inviter forælder</div>
+    <div class="hint" style="padding:6px 14px 0;text-align:left">Den anden forælder får et link og laver sit eget login. Du kan aldrig blive låst ude af din egen familie.</div>
     <div class="set-h">Få besked når børnene indløser</div>${toggle('Oplevelser','🎉 Oplevelser')}${toggle('Privilegier','⭐ Privilegier')}${toggle('Avatar','🎨 Avatar')}
     <div class="set-h">Konto</div>
     <div class="setrow"><div class="t">Logget ind som forælder</div><button class="btn ghost" style="padding:9px 16px" onclick="logout()">Log ud</button></div>
@@ -714,6 +757,7 @@ function renderOverlay(){
   else if(o.type==='confirm')ov.innerHTML=confirmOverlay(o);
   else if(o.type==='emoji')ov.innerHTML=emojiOverlay(o);
   else if(o.type==='delkid')ov.innerHTML=delKidOverlay(o);
+  else if(o.type==='invite')ov.innerHTML=inviteOverlay(o);
 }
 function dotsHTML(n){return [0,1,2,3].map(i=>`<i class="${i<n?'f':''}"></i>`).join('');}
 function setDots(id,n){const el=document.getElementById(id);if(el)el.innerHTML=dotsHTML(n);}
@@ -760,6 +804,20 @@ function delKidOverlay(o){
   const k=state.kids.find(x=>x.id===o.kidId);
   return `<div class="backdrop"><div class="sheet"><h3>Slet ${esc(k?k.name:'')}?</h3><div style="font-size:14px;color:var(--muted);margin-top:6px">Alle point og køb for dette barn slettes. Det kan ikke fortrydes.</div><div class="rowbtns"><button class="btn ghost" onclick="closeOverlay()">Annullér</button><button class="btn" style="background:#E0468A" onclick="confirmDelKid()">Slet</button></div></div></div>`;
 }
+function inviteOverlay(o){
+  if(o.link){
+    return `<div class="backdrop"><div class="sheet"><h3>Invitation klar 🎉</h3>
+      <div style="font-size:13.5px;color:var(--muted);margin-top:6px">Send dette link til <b>${esc(o.email)}</b>. De opretter deres <b>egen</b> adgangskode og er så inde i familien — du skal ikke vælge en kode for dem.</div>
+      <div style="margin-top:12px;background:#F6F3FC;border:1px solid var(--line);border-radius:12px;padding:11px 12px;font-size:12px;word-break:break-all;color:var(--purple-dark)">${esc(o.link)}</div>
+      <div class="rowbtns"><button class="btn ghost" onclick="closeOverlay()">Luk</button><button class="btn" onclick="copyInvite()">Kopiér link</button></div>
+      <div style="font-size:11px;color:var(--muted2);text-align:center;margin-top:10px">Del kun linket med personer du stoler på.</div></div></div>`;
+  }
+  return `<div class="backdrop"><div class="sheet"><h3>Inviter forælder</h3>
+    <div style="font-size:13.5px;color:var(--muted);margin-top:4px">Skriv deres e-mail. De laver deres eget login bagefter.</div>
+    <label class="fld">Deres e-mail</label><input class="txt" type="email" inputmode="email" value="${esc(o.email||'')}" placeholder="navn@eksempel.dk" oninput="ui.overlay.email=this.value">
+    <div class="err" style="color:var(--coral-tx)">${o.error||''}</div>
+    <div class="rowbtns"><button class="btn ghost" onclick="closeOverlay()">Annullér</button><button class="btn" onclick="confirmInvite()">Lav invitation</button></div></div></div>`;
+}
 
 /* ===== Actions ===== */
 function go(screen){
@@ -790,7 +848,18 @@ function toggleTask(id,ev){
 }
 
 function startParentSetup(){ui.overlay={type:'setup',step:'name',name:'',pin1:'',pin2:'',error:''};renderOverlay();}
-function startAddParent(){ui.overlay={type:'setup',step:'name',name:'',pin1:'',pin2:'',error:'',addMode:true};renderOverlay();}
+function startAddParent(){ui.overlay={type:'invite',email:'',error:'',link:''};renderOverlay();}
+function confirmInvite(){
+  const o=ui.overlay; const email=(o.email||'').trim().toLowerCase();
+  if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){o.error='Skriv en gyldig e-mail';renderOverlay();return;}
+  if(!Array.isArray(state.allowedEmails))state.allowedEmails=[];
+  if(state.allowedEmails.map(function(e){return (e||'').toLowerCase();}).indexOf(email)<0)state.allowedEmails.push(email);
+  save();
+  const fid=ui.familyId||(cloudUser&&cloudUser.uid)||'';
+  o.link=location.origin+location.pathname+'?family='+encodeURIComponent(fid);
+  o.email=email; renderOverlay();
+}
+function copyInvite(){const o=ui.overlay;if(!o||!o.link)return;try{navigator.clipboard.writeText(o.link).then(function(){toast('Link kopieret 📋');},function(){toast('Markér og kopiér linket');});}catch(e){toast('Markér og kopiér linket');}}
 function setSetupName(n){ui.overlay.name=n;const el=document.getElementById('pname');if(el)el.value=n;}
 function setupNameNext(){if(!(ui.overlay.name||'').trim()){ui.overlay.error='Skriv et navn';renderOverlay();return;}ui.overlay.step='pin1';ui.overlay.error='';renderOverlay();}
 function setupPin(d){
@@ -944,11 +1013,20 @@ setTimeout(function(){ if(ui.screen==='loading'){ ui.screen='auth'; render(); } 
       signup:function(e,p){return createUserWithEmailAndPassword(auth,e,p);},
       login:function(e,p){return signInWithEmailAndPassword(auth,e,p);},
       logout:function(){return signOut(auth);},
-      save:function(data){ if(auth.currentUser) return setDoc(doc(db,'families',auth.currentUser.uid),data); }
+      save:function(data){ var fid=window.__familyId||(auth.currentUser&&auth.currentUser.uid); if(fid) return setDoc(doc(db,'families',fid),data); }
     };
     onAuthStateChanged(auth,function(user){
       if(unsub){unsub();unsub=null;}
-      if(user){ unsub=onSnapshot(doc(db,'families',user.uid),function(snap){ if(window.onFamily)window.onFamily(user,snap.exists()?snap.data():null,snap.metadata.hasPendingWrites); },function(err){ if(window.onCloudError)window.onCloudError(err); }); }
+      if(user){
+        var fid=null;
+        try{var m=location.search.match(/[?&]family=([^&]+)/);if(m)fid=decodeURIComponent(m[1]);}catch(e){}
+        if(!fid){try{fid=localStorage.getItem('pling_fid_'+user.uid);}catch(e){}}
+        if(!fid)fid=user.uid;
+        try{localStorage.setItem('pling_fid_'+user.uid,fid);}catch(e){}
+        window.__familyId=fid;
+        try{if(location.search.indexOf('family=')>=0)history.replaceState(null,'',location.pathname);}catch(e){}
+        unsub=onSnapshot(doc(db,'families',fid),function(snap){ if(window.onFamily)window.onFamily(user,snap.exists()?snap.data():null,snap.metadata.hasPendingWrites,fid); },function(err){ if(window.onCloudError)window.onCloudError(err); });
+      }
       if(window.onAuth)window.onAuth(user);
     });
   }catch(e){ if(window.onCloudError)window.onCloudError(e); }
