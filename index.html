@@ -448,13 +448,13 @@ function authScreen(){
     <div>${avatarHTML({size:80,bodyColor:'#FFB6D9',hat:'🎩'})}</div>
     <span class="wtag">Arbejdstitel</span><h1 style="font-size:26px">Pling</h1>
     <p>${s?'Opret din forælderkonto for at komme i gang.':'Log ind for at fortsætte.'}</p>
-    <div style="width:100%;max-width:300px;display:flex;flex-direction:column;gap:10px;margin-top:4px">
-      ${s?`<input class="txt" id="authName" placeholder="Dit navn">`:''}
-      <input class="txt" id="authEmail" type="email" placeholder="E-mail">
-      <input class="txt" id="authPass" type="password" placeholder="Adgangskode (min. 6 tegn)">
+    <form autocomplete="on" onsubmit="event.preventDefault();${s?'doSignup()':'doLogin()'};return false;" style="width:100%;max-width:300px;display:flex;flex-direction:column;gap:10px;margin-top:4px">
+      ${s?`<input class="txt" id="authName" name="name" autocomplete="name" placeholder="Dit navn">`:''}
+      <input class="txt" id="authEmail" name="username" type="email" autocomplete="username" placeholder="E-mail">
+      <input class="txt" id="authPass" type="password" autocomplete="${s?'new-password':'current-password'}" placeholder="Adgangskode (min. 6 tegn)">
       <div class="err" id="authErr" style="color:var(--coral-tx);min-height:0;text-align:center">${esc(ui.authError||'')}</div>
-      <button class="cta" id="authBtn" style="margin-top:0;width:100%" onclick="${s?'doSignup()':'doLogin()'}">${s?'Opret konto':'Log ind'}</button>
-    </div>
+      <button class="cta" id="authBtn" type="submit" style="margin-top:0;width:100%">${s?'Opret konto':'Log ind'}</button>
+    </form>
     <button class="link" onclick="toggleAuthMode()">${s?'Har du allerede en konto? <b>Log ind</b>':'Ny her? <b>Opret konto</b>'}</button>
   </div>`;
 }
