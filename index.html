@@ -230,12 +230,10 @@
   .toast{position:absolute;left:50%;bottom:82px;transform:translateX(-50%);background:#241948;color:#fff;padding:10px 18px;border-radius:100px;font-size:13px;font-weight:600;z-index:80;animation:toastPop .25s ease;pointer-events:none;white-space:nowrap;box-shadow:0 8px 22px rgba(0,0,0,.25);max-width:86%;text-align:center}
   .float{position:absolute;font-family:var(--poppins);font-weight:700;font-size:17px;z-index:80;animation:pointFloat 1s ease forwards;pointer-events:none}
   .confetti{position:absolute;width:9px;height:9px;z-index:75;animation:confettiPop .8s ease-out forwards;pointer-events:none}
-  .stagebadge{position:absolute;top:calc(8px + env(safe-area-inset-top));right:10px;z-index:40;background:rgba(36,25,72,.66);color:#fff;font-family:var(--poppins);font-weight:600;font-size:10px;padding:4px 10px;border-radius:100px;letter-spacing:.3px}
 </style>
 </head>
 <body>
 <div class="frame" id="frame">
-  <div class="stagebadge">FASE 4</div>
   <div id="app"></div>
   <div id="overlay"></div>
 </div>
@@ -323,7 +321,7 @@ function normalize(s){
   if(!s.kidDevices||typeof s.kidDevices!=='object'||Array.isArray(s.kidDevices))s.kidDevices={};
   if(s.currentKidId===undefined)s.currentKidId=null;
   s.tasks.forEach(t=>{if(t.assignMode==null){t.assignMode='age';t.minAge=2;t.maxAge=18;} if(t.kidIds==null)t.kidIds=[]; if(t.weekdays==null)t.weekdays=[];});
-  s.rewards.forEach(r=>{if(r.reset==null)r.reset='daily';});
+  s.rewards.forEach(r=>{if(r.reset==null)r.reset='daily'; if(r.assignMode==null){r.assignMode='age';r.minAge=2;r.maxAge=18;} if(r.kidIds==null)r.kidIds=[];});
   s.parents.forEach(p=>{if(p.bodyColor==null)p.bodyColor='#B8C7F0'; if(p.hat==null)p.hat='👓'; if(p.pants==null)p.pants='';});
   s.kids.forEach(k=>{if(k.redeemed==null)k.redeemed={};});
   return s;
@@ -353,6 +351,7 @@ function seedDefaults(){
       {id:uid('r'),icon:'🎮',title:'30 min gaming',cost:40,category:'Privilegier',reset:'daily',active:true}
     ];
   }
+  normalize(state);
   save();
 }
 
@@ -632,8 +631,11 @@ window.onFamily=function(user,data,pending,fid){
   if(data){
     const raw=JSON.stringify(data);
     if(raw===lastWritten){ if(ui.screen==='auth'||ui.screen==='loading'||ui.screen==='cloudmsg'){ui.screen='picker';render();} return; }
-    lastWritten=raw; state=normalize(data);
-    var changed=false;
+    lastWritten=raw;
+    var needCanon=false;
+    try{ (data.rewards||[]).forEach(function(r){if(r&&(r.assignMode==null||r.kidIds==null))needCanon=true;}); (data.tasks||[]).forEach(function(t){if(t&&(t.assignMode==null||t.kidIds==null))needCanon=true;}); }catch(e){}
+    state=normalize(data);
+    var changed=needCanon;
     if(isFounder&&myEmail){
       if(!state.founderEmail){state.founderEmail=myEmail;changed=true;}
       if(state.allowedEmails.map(function(e){return (e||'').toLowerCase();}).indexOf(myEmail)<0){state.allowedEmails.push(myEmail);changed=true;}
@@ -735,7 +737,7 @@ function cosmeticRow(k,item,kind){
 }
 function shopScreen(){
   const k=currentKid(); if(!k){ui.screen='picker';return pickerScreen();}
-  const rw=state.rewards.filter(r=>r.active!==false);
+  const rw=state.rewards.filter(r=>r.active!==false && taskAppliesTo(k,r));
   const exp=rw.filter(r=>r.category==='Oplevelser').map(r=>rewardRow(k,r)).join('');
   const priv=rw.filter(r=>r.category==='Privilegier').map(r=>rewardRow(k,r)).join('');
   const cosmetics=[...COLORS.filter(c=>c.cost>0).map(c=>cosmeticRow(k,c,'color')),...HATS.filter(c=>c.cost>0).map(c=>cosmeticRow(k,c,'hat')),...PANTS.filter(c=>c.cost>0).map(c=>cosmeticRow(k,c,'pants'))].join('');
@@ -846,11 +848,14 @@ function tabOpgaver(){
 }
 function tabPraemier(){
   const rows=state.rewards.map(r=>{
-    const open=ui.editRewardId===r.id;
+    const open=ui.editRewardId===r.id; const amode=r.assignMode||'age';
+    const assign=amode==='age'
+      ? `<div class="agebox" style="margin-top:10px"><div class="col"><label class="fld">Fra alder</label><div class="stp"><button onclick="setRewardMinAge('${r.id}',-1)">−</button><span>${r.minAge==null?2:r.minAge}</span><button onclick="setRewardMinAge('${r.id}',1)">＋</button></div></div><div class="col"><label class="fld">Til alder</label><div class="stp"><button onclick="setRewardMaxAge('${r.id}',-1)">−</button><span>${r.maxAge==null?18:r.maxAge}</span><button onclick="setRewardMaxAge('${r.id}',1)">＋</button></div></div></div>`
+      : `<div class="chips" style="margin-top:10px">${state.kids.length? state.kids.map(k=>`<button class="chip2 ${(r.kidIds||[]).includes(k.id)?'on':''}" onclick="toggleKidAssignReward('${r.id}','${k.id}')">${esc(k.name)}</button>`).join('') : '<div class="hint" style="padding:6px 0;text-align:left">Tilføj børn i Børn-fanen først</div>'}</div>`;
     return `<div class="adm">
       <div class="adm-h">
         <button class="adm-ic" onclick="pickEmoji('reward','${r.id}')">${r.icon}</button>
-        <div class="adm-tt" onclick="toggleEditR('${r.id}')">${r.title?esc(r.title):'<span style="color:var(--muted3)">Ny præmie…</span>'}<div class="adm-sub">${r.cost} 🪙 · ${r.category} · ${RESET_LABEL[r.reset||'daily']}</div></div>
+        <div class="adm-tt" onclick="toggleEditR('${r.id}')">${r.title?esc(r.title):'<span style="color:var(--muted3)">Ny præmie…</span>'}<div class="adm-sub">${r.cost} 🪙 · ${r.category} · ${RESET_LABEL[r.reset||'daily']}${assignSummary(r)}</div></div>
         <label class="sw"><input type="checkbox" ${r.active!==false?'checked':''} onchange="setRewardActive('${r.id}',this.checked)"><span></span></label>
         <button class="del" onclick="delReward('${r.id}')">✕</button>
       </div>
@@ -862,6 +867,9 @@ function tabPraemier(){
         <div class="catpick"><div class="opt ${r.category==='Oplevelser'?'sel':''}" onclick="setRewardCat('${r.id}','Oplevelser')"><span class="rd">✓</span> 🎉 Oplevelser</div><div class="opt ${r.category==='Privilegier'?'sel':''}" onclick="setRewardCat('${r.id}','Privilegier')"><span class="rd">✓</span> ⭐ Privilegier</div></div>
         <label class="fld">Kan indløses</label>
         <div class="chips">${RESET_ORDER.map(rs=>`<button class="chip2 ${(r.reset||'daily')===rs?'on':''}" onclick="setRewardReset('${r.id}','${rs}')">${RESET_LABEL[rs]}</button>`).join('')}</div>
+        <label class="fld">Hvem kan se den</label>
+        <div class="seg"><button class="${amode==='age'?'on':''}" onclick="setRewardAssignMode('${r.id}','age')">Efter alder</button><button class="${amode==='kids'?'on':''}" onclick="setRewardAssignMode('${r.id}','kids')">Bestemte børn</button></div>
+        ${assign}
         <button class="btn" style="margin-top:16px;width:100%" onclick="toggleEditR('${r.id}')">Færdig</button>
       </div>`:''}
     </div>`;
@@ -1207,7 +1215,7 @@ function setMinAge(id,d){const t=state.tasks.find(x=>x.id===id);if(t){const mx=t
 function setMaxAge(id,d){const t=state.tasks.find(x=>x.id===id);if(t){const mn=t.minAge==null?0:t.minAge;t.maxAge=Math.min(18,Math.max(mn,(t.maxAge==null?18:t.maxAge)+d));save();render();}}
 function toggleKidAssign(id,kidId){const t=state.tasks.find(x=>x.id===id);if(t){t.kidIds=t.kidIds||[];const i=t.kidIds.indexOf(kidId);if(i>=0)t.kidIds.splice(i,1);else t.kidIds.push(kidId);save();render();}}
 function delTask(id){state.tasks=state.tasks.filter(x=>x.id!==id);if(ui.editId===id)ui.editId=null;save();render();}
-function addReward(){const r={id:uid('r'),icon:'🎁',title:'',cost:50,category:'Privilegier',reset:'daily',active:true};state.rewards.unshift(r);ui.editRewardId=r.id;save();render();}
+function addReward(){const r={id:uid('r'),icon:'🎁',title:'',cost:50,category:'Privilegier',reset:'daily',active:true,assignMode:'age',minAge:2,maxAge:18,kidIds:[]};state.rewards.unshift(r);ui.editRewardId=r.id;save();render();}
 function toggleEditR(id){ui.editRewardId=ui.editRewardId===id?null:id;render();}
 function setRewardTitle(id,v){const r=state.rewards.find(x=>x.id===id);if(r){r.title=(v||'').trim();save();render();}}
 function setRewardCost(id,d){const r=state.rewards.find(x=>x.id===id);if(r){r.cost=Math.max(5,r.cost+d);save();render();}}
@@ -1215,6 +1223,10 @@ function setRewardCostVal(id,v){const r=state.rewards.find(x=>x.id===id);if(r){l
 function setRewardCat(id,c){const r=state.rewards.find(x=>x.id===id);if(r){r.category=c;save();render();}}
 function setRewardReset(id,rs){const r=state.rewards.find(x=>x.id===id);if(r){r.reset=rs;save();render();}}
 function setRewardActive(id,ch){const r=state.rewards.find(x=>x.id===id);if(r){r.active=ch;save();render();}}
+function setRewardAssignMode(id,mode){const r=state.rewards.find(x=>x.id===id);if(r){r.assignMode=mode;if(mode==='age'){if(r.minAge==null)r.minAge=2;if(r.maxAge==null)r.maxAge=18;}if(mode==='kids'&&r.kidIds==null)r.kidIds=[];save();render();}}
+function setRewardMinAge(id,d){const r=state.rewards.find(x=>x.id===id);if(r){const mx=r.maxAge==null?18:r.maxAge;r.minAge=Math.max(0,Math.min(mx,(r.minAge==null?2:r.minAge)+d));save();render();}}
+function setRewardMaxAge(id,d){const r=state.rewards.find(x=>x.id===id);if(r){const mn=r.minAge==null?0:r.minAge;r.maxAge=Math.min(18,Math.max(mn,(r.maxAge==null?18:r.maxAge)+d));save();render();}}
+function toggleKidAssignReward(id,kidId){const r=state.rewards.find(x=>x.id===id);if(r){r.kidIds=r.kidIds||[];const i=r.kidIds.indexOf(kidId);if(i>=0)r.kidIds.splice(i,1);else r.kidIds.push(kidId);save();render();}}
 function delReward(id){state.rewards=state.rewards.filter(x=>x.id!==id);if(ui.editRewardId===id)ui.editRewardId=null;save();render();}
 function pickEmoji(kind,id){ui.overlay={type:'emoji',kind:kind,id:id};renderOverlay();}
 function setEmoji(e){const o=ui.overlay;if(o.kind==='task'){const t=state.tasks.find(x=>x.id===o.id);if(t)t.icon=e;}else{const r=state.rewards.find(x=>x.id===o.id);if(r)r.icon=e;}ui.overlay=null;save();render();}
