@@ -313,6 +313,7 @@ const KEY='pling_v1';
 let state=normalize(load());
 let ui={screen:'loading',shownPoints:0,overlay:null,tasksOpen:true,parentTab:'opgaver',editId:null,editRewardId:null,parentId:null,currentKidId:null,authMode:'login',authError:'',familyId:null,cloudMsg:'',invited:false};
 let cloudUser=null, lastWritten=null, pendingSignupName='';
+var pushSessionStart=Date.now(), notifPushed={};
 try{if(/[?&]family=/.test(location.search)){ui.authMode='signup';ui.invited=true;}}catch(e){}
 function normalize(s){
   s=s||{}; s.seq=s.seq||1; s.parents=s.parents||[]; s.kids=s.kids||[]; s.tasks=s.tasks||[]; s.rewards=s.rewards||[];
@@ -404,6 +405,42 @@ function assignSummary(t){
   if(mn<=2&&mx>=18)return ''; return ` · ${mn}–${mx} år`;
 }
 
+/* ===== Notifikationer ===== */
+function nbaseKey(){return 'pling_nbase_'+(ui.familyId||'x');}
+function ndisKey(){return 'pling_ndis_'+(ui.familyId||'x');}
+function getNbase(){try{var v=localStorage.getItem(nbaseKey());return v==null?null:parseInt(v,10);}catch(e){return null;}}
+function setNbase(v){try{localStorage.setItem(nbaseKey(),String(v));}catch(e){}}
+function ensureNbase(){if(getNbase()==null)setNbase(Date.now());}
+function getNdis(){try{var v=localStorage.getItem(ndisKey());return v?JSON.parse(v):[];}catch(e){return [];}}
+function setNdis(a){try{localStorage.setItem(ndisKey(),JSON.stringify(a.slice(-150)));}catch(e){}}
+function unseenNotifs(){ensureNbase();var base=getNbase()||0;var ds={};getNdis().forEach(function(w){ds[w]=1;});return (state.notifications||[]).filter(function(n){return n&&n.when>base&&!ds[n.when];}).sort(function(a,b){return b.when-a.when;});}
+function dismissNotif(when){var d=getNdis();if(d.indexOf(when)<0){d.push(when);setNdis(d);}render();}
+function dismissAllNotifs(){var d=getNdis();unseenNotifs().forEach(function(n){if(d.indexOf(n.when)<0)d.push(n.when);});setNdis(d);render();}
+function notifBannerHTML(){
+  var list=unseenNotifs(); if(!list.length)return '';
+  var show=list.slice(0,3), extra=list.length-show.length;
+  var rows=show.map(function(n){return `<div class="msgbanner" style="background:#EAFBD9;border-color:#cdeaa0;color:#3c5a00">🎉 <div style="flex:1"><b>${esc(n.kidName)}</b> indløste <b>${esc(n.title)}</b><div style="font-size:11px;color:#6f8a3a;font-weight:400">${esc(n.category)} · 🪙 ${n.cost} · ${relTime(n.when)}</div></div><span class="x" style="color:#8fae55" onclick="dismissNotif(${n.when})">✕</span></div>`;}).join('');
+  var foot=(show.length>1||extra>0)?`<div class="hint" style="text-align:left;padding:0 16px 8px"><span style="cursor:pointer;color:var(--purple);font-weight:600" onclick="dismissAllNotifs()">Ryd alle</span>${extra>0?` · +${extra} flere`:''}</div>`:'';
+  return rows+foot;
+}
+function maybePush(){
+  if(typeof Notification==='undefined'||Notification.permission!=='granted')return;
+  (state.notifications||[]).forEach(function(n){
+    if(n&&n.when>=pushSessionStart&&!notifPushed[n.when]){notifPushed[n.when]=1;try{new Notification('Pling 🔔',{body:n.kidName+' indløste '+n.title,tag:'pling'+n.when});}catch(e){}}
+  });
+}
+function notifPermRow(){
+  if(typeof Notification==='undefined')return `<div class="setrow"><div class="t">Push på enheden<div style="font-size:11.5px;color:var(--muted2);font-weight:400">Ikke understøttet i denne browser</div></div></div>`;
+  var p=Notification.permission;
+  if(p==='granted')return `<div class="setrow"><div class="t">Push på enheden<div style="font-size:11.5px;color:var(--muted2);font-weight:400">Slået til her ✓ (mens appen er åben)</div></div></div>`;
+  if(p==='denied')return `<div class="setrow"><div class="t">Push på enheden<div style="font-size:11.5px;color:var(--muted2);font-weight:400">Blokeret — slå til i browserens indstillinger</div></div></div>`;
+  return `<div class="setrow"><div class="t">Push på enheden<div style="font-size:11.5px;color:var(--muted2);font-weight:400">Få en besked når et barn indløser</div></div><button class="btn ghost" style="padding:9px 16px" onclick="enablePush()">Slå til</button></div>`;
+}
+function enablePush(){
+  if(typeof Notification==='undefined'){toast('Ikke understøttet her');return;}
+  try{Notification.requestPermission().then(function(perm){render();if(perm==='granted'){toast('Notifikationer slået til 🔔');try{new Notification('Pling 🔔',{body:'Notifikationer er slået til på denne enhed.'});}catch(e){}}else if(perm==='denied')toast('Notifikationer blev blokeret');});}catch(e){toast('Kunne ikke slå til her');}
+}
+
 /* ===== Render ===== */
 const app=document.getElementById('app');
 function render(){
@@ -424,6 +461,7 @@ function render(){
   const _sc2=app.querySelector('.scroll'); if(_sc2)_sc2.scrollTop=_st;
   ui._rendered=ui.screen;
   renderOverlay();
+  maybePush();
 }
 function scallops(c1,c2){let s='';for(let i=0;i<34;i++){s+=`<i style="background:${i%2?c2:c1}"></i>`;}return s;}
 function bannerHTML(c1,c2){
@@ -511,6 +549,7 @@ window.onFamily=function(user,data,pending,fid){
     if(changed)save();
     var firstLand=(ui.screen==='auth'||ui.screen==='loading'||ui.screen==='cloudmsg');
     if(firstLand)ui.screen='picker';
+    if(firstLand)ensureNbase();
     if(firstLand&&mine&&!mine.pin)ui.overlay={type:'setpin',parentId:mine.id,step:'pin1',pin1:'',pin2:'',error:''};
     render();
   } else {
@@ -667,7 +706,7 @@ function parentScreen(){
     <div class="ed-top"><div class="backbtn" onclick="go('picker')">←</div>
       <div style="display:flex;align-items:center;gap:9px;cursor:pointer" onclick="go('pavatar')">${avatarHTML({size:36,bodyColor:(p&&p.bodyColor)||'#B8C7F0',hat:(p&&p.hat)||'👓'})}<div class="ed-title">${esc(p?p.name:'Forælder')} ✎</div></div></div>
     <div class="ptabs">${tabrow}</div>
-    <div class="scroll">${body}</div>
+    <div class="scroll">${notifBannerHTML()}${body}</div>
   </div>`;
 }
 function tabOpgaver(){
@@ -755,7 +794,7 @@ function tabIndstil(){
   return `<div style="padding-bottom:20px"><div class="set-h">Forældre-konti</div>${plist}
     <div class="setrow" style="justify-content:center;cursor:pointer;color:var(--purple);font-family:var(--poppins);font-weight:600" onclick="startAddParent()">＋ Inviter forælder</div>
     <div class="hint" style="padding:6px 14px 0;text-align:left">Den anden forælder får et link og laver sit eget login. Du kan aldrig blive låst ude af din egen familie.</div>
-    <div class="set-h">Få besked når børnene indløser</div>${toggle('Oplevelser','🎉 Oplevelser')}${toggle('Privilegier','⭐ Privilegier')}${toggle('Avatar','🎨 Avatar')}
+    <div class="set-h">Få besked når børnene indløser</div>${toggle('Oplevelser','🎉 Oplevelser')}${toggle('Privilegier','⭐ Privilegier')}${toggle('Avatar','🎨 Avatar')}${notifPermRow()}
     <div class="set-h">Konto</div>
     <div class="setrow"><div class="t">Skift din PIN 🔒</div><button class="btn ghost" style="padding:9px 16px" onclick="startChangePin()">Skift</button></div>
     <div class="setrow"><div class="t">Logget ind som forælder</div><button class="btn ghost" style="padding:9px 16px" onclick="logout()">Log ud</button></div>
@@ -977,8 +1016,9 @@ function doRedeem(){
   k.points-=o.item.cost; const cat=o.kind==='reward'?o.item.category:'Avatar';
   if(o.kind==='reward'){if(!k.redeemed)k.redeemed={};k.redeemed[o.item.id]=rewardPeriodKey(o.item.reset||'daily');}
   else{ownedList(k,o.kind).push(o.item.value);}
-  k.redemptions=k.redemptions||[]; k.redemptions.push({icon:o.kind==='reward'?o.item.icon:'🎨',title:o.item.title,cost:o.item.cost,when:Date.now()});
-  if(state.notifyCategories[cat]!==false)state.notifications.push({icon:o.kind==='reward'?o.item.icon:'🎨',kidName:k.name,title:o.item.title,cost:o.item.cost,when:Date.now(),category:cat});
+  var when=Date.now();
+  k.redemptions=k.redemptions||[]; k.redemptions.push({icon:o.kind==='reward'?o.item.icon:'🎨',title:o.item.title,cost:o.item.cost,when:when});
+  if(state.notifyCategories[cat]!==false){state.notifications.push({icon:o.kind==='reward'?o.item.icon:'🎨',kidName:k.name,title:o.item.title,cost:o.item.cost,when:when,category:cat});notifPushed[when]=1;if(state.notifications.length>100)state.notifications=state.notifications.slice(-100);}
   ui.overlay=null; save(); render(); countTo(from,k.points); confettiBurstCenter();
   toast(o.kind==='reward'?'Indløst! 🎉':'Købt! Skift den i Min profil 🎨');
 }
