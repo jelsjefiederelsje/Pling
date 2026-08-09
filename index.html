@@ -508,21 +508,20 @@ function authScreen(){
 }
 function kidPairScreen(){
   const kp=ui.kidPair||{};
-  if(kp.status==='starting'||kp.status==='connecting'){
-    return `<div class="scr welcome">${avatarHTML({size:84,bodyColor:'#AEDFF7',hat:'🧢'})}<h1 style="font-size:22px">${kp.status==='connecting'?'Forbinder…':'Et øjeblik…'}</h1><p>${kp.status==='connecting'?'Din forælder tilføjede dig — henter dine opgaver.':'Klargør din kode.'}</p></div>`;
+  if(kp.status==='checking'||kp.status==='connecting'){
+    return `<div class="scr welcome">${avatarHTML({size:84,bodyColor:'#AEDFF7',hat:'🧢'})}<h1 style="font-size:22px">${kp.status==='connecting'?'Næsten klar…':'Tjekker koden…'}</h1><p>${kp.status==='connecting'?'Venter på at din forælder godkender din enhed. Bliv på skærmen.':'Et øjeblik.'}</p></div>`;
   }
   if(kp.status==='error'){
     return `<div class="scr welcome">${avatarHTML({size:72,bodyColor:'#FFB6D9',hat:'🎩'})}<h1 style="font-size:22px">Hov…</h1><p>${esc(kp.error||'Noget gik galt.')}</p><button class="cta" onclick="startKidDevice()">Prøv igen</button><button class="link" onclick="exitKidPair()">Tilbage</button></div>`;
   }
-  // showing code
-  const code=kp.code||'';
-  const digits=code.split('').map(c=>`<span style="display:inline-flex;align-items:center;justify-content:center;width:38px;height:52px;background:#fff;border:2px solid var(--purple);border-radius:12px;font-family:var(--poppins);font-weight:700;font-size:26px;color:var(--purple-dark)">${c}</span>`).join('');
+  // enter code (barnet taster forælderens kode)
   return `<div class="scr welcome">
     ${avatarHTML({size:76,bodyColor:'#AEDFF7',hat:'🧢'})}
-    <h1 style="font-size:22px">Din kode</h1>
-    <p>Vis denne kode til din forælder. Så tilføjer de dig på deres telefon 📱</p>
-    <div style="display:flex;gap:7px;margin:6px 0">${digits}</div>
-    <div class="goldbar" style="margin:6px 14px">⏳ Venter på din forælder… hold denne skærm åben.</div>
+    <h1 style="font-size:22px">Indtast din kode</h1>
+    <p>Din forælder viser dig en 6-cifret kode. Skriv den her 👇</p>
+    <input id="kidCodeIn" class="txt" inputmode="numeric" maxlength="6" value="${esc(kp.code||'')}" placeholder="______" style="text-align:center;font-family:var(--poppins);font-weight:700;font-size:28px;letter-spacing:8px;width:80%;max-width:230px" oninput="if(ui.kidPair)ui.kidPair.code=this.value.replace(/[^0-9]/g,'').slice(0,6)">
+    <div class="err" style="color:var(--coral-tx);min-height:18px">${esc(kp.error||'')}</div>
+    <button class="cta" onclick="submitKidCode()" style="margin-top:0">Forbind</button>
     <button class="link" onclick="exitKidPair()">Fortryd</button>
   </div>`;
 }
@@ -558,25 +557,26 @@ function resetApp(){
 
 /* ===== Barne-parring (barnets enhed) ===== */
 function genPairCode(){return String(Math.floor(100000+Math.random()*900000));}
-function startKidDevice(){
-  if(!window.cloud){ui.kidPair={status:'error',error:'Ingen forbindelse.'};ui.screen='kidpair';render();return;}
-  ui.kidPair={status:'starting'};ui.screen='kidpair';render();
+function startKidDevice(){ ui.kidPair={status:'enter',code:'',error:''}; ui.screen='kidpair'; render(); }
+function submitKidCode(){
+  var el=document.getElementById('kidCodeIn');
+  var code=((el?el.value:(ui.kidPair&&ui.kidPair.code))||'').replace(/[^0-9]/g,'').slice(0,6);
+  if(!/^[0-9]{6}$/.test(code)){ ui.kidPair={status:'enter',code:code,error:'Skriv den 6-cifrede kode fra din forælder'}; render(); return; }
+  if(!window.cloud||!window.cloud.anonLogin){ ui.kidPair={status:'error',error:'Ingen forbindelse til serveren.'}; render(); return; }
+  ui.kidPair={status:'checking',code:code}; render();
   window.cloud.anonLogin().then(function(cred){
     var uid=cred&&cred.user&&cred.user.uid; if(!uid){throw new Error('no uid');}
-    var code=genPairCode();
-    return window.cloud.createPairing(code,{anonUid:uid,createdAt:Date.now(),expiresAt:Date.now()+30*60000,familyId:null,kidId:null}).then(function(){
-      ui.kidPair={status:'showing',code:code,uid:uid};render();
-      window.cloud.watchPairing(code,function(data){ onKidPairingResp(code,data); });
+    return window.cloud.readPairing(code).then(function(data){
+      if(!data){ ui.kidPair={status:'enter',code:'',error:'Koden findes ikke. Tjek tallene, eller bed om en ny.'}; render(); return; }
+      if(data.expiresAt&&Date.now()>data.expiresAt){ ui.kidPair={status:'enter',code:'',error:'Koden er udløbet. Bed din forælder om en ny.'}; render(); return; }
+      return window.cloud.updatePairing(code,{claimedBy:uid}).then(function(){
+        try{localStorage.setItem('pling_kidpair',JSON.stringify({familyId:data.familyId,kidId:data.kidId}));}catch(e){}
+        window.__familyId=data.familyId;
+        ui.kidPair={status:'connecting'}; render();
+        if(window.cloud.subscribeKid)window.cloud.subscribeKid();
+      });
     });
-  }).catch(function(e){ui.kidPair={status:'error',error:'Kunne ikke starte parring. Prøv igen.'};render();});
-}
-function onKidPairingResp(code,data){
-  if(!data||!data.familyId||!data.kidId)return;
-  if(!ui.kidPair||ui.kidPair.status==='connecting')return;
-  try{localStorage.setItem('pling_kidpair',JSON.stringify({familyId:data.familyId,kidId:data.kidId}));}catch(e){}
-  ui.kidPair={status:'connecting'};render();
-  if(window.cloud&&window.cloud.subscribeKid)window.cloud.subscribeKid();
-  if(window.cloud&&window.cloud.deletePairing)try{window.cloud.deletePairing(code);}catch(e){}
+  }).catch(function(e){ ui.kidPair={status:'enter',code:code,error:'Kunne ikke forbinde lige nu. Prøv igen.'}; render(); });
 }
 function exitKidPair(){
   ui.kidPair=null;
@@ -874,9 +874,9 @@ function tabBoern(){
     const devList=devs.map(function(uid,i){return `<div class="setrow" style="margin:8px 0 0"><span style="font-size:16px">📱</span><div class="t">Enhed ${i+1}<div style="font-size:11px;color:var(--muted2);font-weight:400">id ${esc(uid.slice(0,6))}…</div></div><button class="del" onclick="askUnpairKid('${esc(uid)}')">✕</button></div>`;}).join('');
     const sub=`${k.age} år · 🪙 ${k.points}`+(devs.length?` · ${devs.length} enhed${devs.length>1?'er':''}`:'');
     return `<div class="adm"><div class="adm-h">${avatarHTML({size:42,bodyColor:k.bodyColor,hat:k.hat,pants:k.pants})}<div class="adm-tt">${esc(k.name)}<div class="adm-sub">${sub}</div></div><button class="del" onclick="askDelKid('${k.id}')">✕</button></div>
-      <div class="adm-body"><button class="btn ghost" style="width:100%" onclick="startPairEnter('${k.id}')">📱 Par en enhed til ${esc(k.name)}</button>${devList}</div></div>`;
+      <div class="adm-body"><button class="btn ghost" style="width:100%" onclick="startPairGenerate('${k.id}')">📱 Par en enhed til ${esc(k.name)}</button>${devList}</div></div>`;
   }).join('');
-  return `<div class="admwrap"><button class="addbtn" onclick="startAddChild()">＋ Tilføj barn</button>${rows||'<div class="empty">Ingen børn endnu</div>'}<div class="hint" style="padding:6px 0 16px">Egen enhed: barnet åbner appen → "Er du et barn? Par denne enhed" → viser dig en kode, som du taster her.</div></div>`;
+  return `<div class="admwrap"><button class="addbtn" onclick="startAddChild()">＋ Tilføj barn</button>${rows||'<div class="empty">Ingen børn endnu</div>'}<div class="hint" style="padding:6px 0 16px">Egen enhed: tryk "Par en enhed" for at få en kode — den skriver barnet på sin egen enhed under "Er du et barn?".</div></div>`;
 }
 function tabOverblik(){
   if(!state.kids.length)return '<div class="empty">Tilføj et barn for at se overblik</div>';
@@ -930,7 +930,7 @@ function renderOverlay(){
   else if(o.type==='invite')ov.innerHTML=inviteOverlay(o);
   else if(o.type==='setpin')ov.innerHTML=setpinOverlay(o);
   else if(o.type==='delparent')ov.innerHTML=delParentOverlay(o);
-  else if(o.type==='pairenter')ov.innerHTML=pairEnterOverlay(o);
+  else if(o.type==='pairshow')ov.innerHTML=pairShowOverlay(o);
   else if(o.type==='unpairkid')ov.innerHTML=unpairKidOverlay(o);
   else if(o.type==='unpairdev')ov.innerHTML=unpairDevOverlay(o);
   else if(o.type==='resetapp')ov.innerHTML=resetAppOverlay(o);
@@ -989,13 +989,23 @@ function delKidOverlay(o){
   const k=state.kids.find(x=>x.id===o.kidId);
   return `<div class="backdrop"><div class="sheet"><h3>Slet ${esc(k?k.name:'')}?</h3><div style="font-size:14px;color:var(--muted);margin-top:6px">Alle point og køb for dette barn slettes. Det kan ikke fortrydes.</div><div class="rowbtns"><button class="btn ghost" onclick="closeOverlay()">Annullér</button><button class="btn" style="background:#E0468A" onclick="confirmDelKid()">Slet</button></div></div></div>`;
 }
-function pairEnterOverlay(o){
-  const k=state.kids.find(x=>x.id===o.kidId);
-  return `<div class="backdrop"><div class="sheet"><h3>Par en enhed til ${esc(k?k.name:'')}</h3>
-    <div style="font-size:13.5px;color:var(--muted);margin-top:4px">På barnets enhed: åbn appen → "Er du et barn? Par denne enhed". Skriv den 6-cifrede kode, den viser, her:</div>
-    <label class="fld">Kode fra barnets enhed</label><input class="txt" inputmode="numeric" maxlength="6" value="${esc(o.code||'')}" placeholder="6 cifre" oninput="ui.overlay.code=this.value.replace(/[^0-9]/g,'').slice(0,6)">
-    <div class="err" style="color:var(--coral-tx)">${o.error||''}</div>
-    <div class="rowbtns"><button class="btn ghost" onclick="closeOverlay()">Annullér</button><button class="btn" onclick="confirmPairEnter()">${o.busy?'Parrer…':'Par enhed'}</button></div></div></div>`;
+function pairShowOverlay(o){
+  const name=esc(o.kidName||'barnet');
+  if(o.status==='error'){
+    return `<div class="backdrop"><div class="sheet"><h3>Hov…</h3><div style="font-size:14px;color:var(--muted);margin-top:6px">${esc(o.error||'Noget gik galt.')}</div><div class="rowbtns"><button class="btn ghost" onclick="closeOverlay()">Luk</button><button class="btn" onclick="startPairGenerate('${o.kidId}')">Prøv igen</button></div></div></div>`;
+  }
+  if(o.status==='creating'){
+    return `<div class="backdrop"><div class="sheet"><h3>Laver kode…</h3><div style="font-size:14px;color:var(--muted);margin-top:6px">Et øjeblik.</div></div></div>`;
+  }
+  if(o.status==='done'){
+    return `<div class="backdrop"><div class="sheet"><h3>✅ Parret!</h3><div style="font-size:14px;color:var(--muted);margin-top:6px">${name}s enhed er nu forbundet og viser kun ${name}s egne opgaver og butik.</div><div class="rowbtns"><button class="btn" onclick="closeOverlay()">Færdig</button></div></div></div>`;
+  }
+  const digits=(o.code||'').split('').map(c=>`<span style="display:inline-flex;align-items:center;justify-content:center;width:40px;height:54px;background:#F6F3FC;border:2px solid var(--purple);border-radius:12px;font-family:var(--poppins);font-weight:700;font-size:26px;color:var(--purple-dark)">${c}</span>`).join('');
+  return `<div class="backdrop"><div class="sheet"><h3>Par ${name}s enhed</h3>
+    <div style="font-size:13.5px;color:var(--muted);margin-top:4px">På ${name}s enhed: åbn appen → "Er du et barn? Par denne enhed" → og skriv denne kode:</div>
+    <div style="display:flex;gap:6px;justify-content:center;margin:16px 0 10px">${digits}</div>
+    <div style="font-size:12.5px;color:var(--muted2);text-align:center">⏳ Venter på at ${name} taster koden… hold dette vindue åbent.</div>
+    <div class="rowbtns"><button class="btn ghost" onclick="closeOverlay()">Annullér</button></div></div></div>`;
 }
 function unpairKidOverlay(o){return `<div class="backdrop"><div class="sheet"><h3>Afkobl enhed?</h3><div style="font-size:14px;color:var(--muted);margin-top:6px">Enheden mister adgang til appen. Barnet kan parre igen med en ny kode.</div><div class="rowbtns"><button class="btn ghost" onclick="closeOverlay()">Annullér</button><button class="btn" style="background:#E0468A" onclick="confirmUnpairKid()">Afkobl</button></div></div></div>`;}
 function unpairDevOverlay(){return `<div class="backdrop"><div class="sheet"><h3>Afkobl denne enhed?</h3><div style="font-size:14px;color:var(--muted);margin-top:6px">Du skal parre igen med en ny kode fra din forælder.</div><div class="rowbtns"><button class="btn ghost" onclick="closeOverlay()">Annullér</button><button class="btn" style="background:#E0468A" onclick="unpairThisDevice()">Afkobl</button></div></div></div>`;}
@@ -1123,22 +1133,25 @@ function confirmAddChild(){
 }
 function askDelKid(id){ui.overlay={type:'delkid',kidId:id};renderOverlay();}
 function confirmDelKid(){const id=ui.overlay.kidId;state.kids=state.kids.filter(k=>k.id!==id);if(ui.currentKidId===id)ui.currentKidId=null;ui.overlay=null;save();render();}
-function startPairEnter(kidId){ui.overlay={type:'pairenter',kidId:kidId,code:'',error:'',busy:false};renderOverlay();}
-function confirmPairEnter(){
-  const o=ui.overlay; const code=(o.code||'').trim();
-  if(!/^[0-9]{6}$/.test(code)){o.error='Skriv den 6-cifrede kode';renderOverlay();return;}
-  if(!window.cloud||!window.cloud.readPairing){o.error='Ingen forbindelse';renderOverlay();return;}
-  o.busy=true;o.error='';renderOverlay();
-  window.cloud.readPairing(code).then(function(data){
-    if(!ui.overlay||ui.overlay.type!=='pairenter')return;
-    if(!data||!data.anonUid){o.error='Ugyldig kode. Tjek tallene på barnets enhed.';o.busy=false;renderOverlay();return;}
-    if(data.expiresAt&&Date.now()>data.expiresAt){o.error='Koden er udløbet. Bed barnet lave en ny.';o.busy=false;renderOverlay();return;}
-    if(!state.kidDevices||typeof state.kidDevices!=='object')state.kidDevices={};
-    state.kidDevices[data.anonUid]=o.kidId; save();
-    if(window.cloud.updatePairing)try{window.cloud.updatePairing(code,{familyId:ui.familyId,kidId:o.kidId,approved:true});}catch(e){}
-    var k=state.kids.find(function(x){return x.id===o.kidId;});
-    ui.overlay=null; render(); toast((k?k.name:'Barnet')+'s enhed er parret 🎉');
-  }).catch(function(e){if(ui.overlay&&ui.overlay.type==='pairenter'){o.error='Kunne ikke slå koden op. Prøv igen.';o.busy=false;renderOverlay();}});
+function startPairGenerate(kidId){
+  var k=state.kids.find(function(x){return x.id===kidId;}); if(!k)return;
+  if(!window.cloud||!window.cloud.createPairing){ui.overlay={type:'pairshow',kidId:kidId,kidName:k.name,status:'error',error:'Ingen forbindelse til serveren.'};renderOverlay();return;}
+  var code=genPairCode();
+  ui.overlay={type:'pairshow',kidId:kidId,kidName:k.name,code:code,status:'creating'};renderOverlay();
+  window.cloud.createPairing(code,{familyId:ui.familyId,kidId:kidId,kidName:k.name,createdAt:Date.now(),expiresAt:Date.now()+30*60000,claimedBy:null,approved:false}).then(function(){
+    if(!ui.overlay||ui.overlay.type!=='pairshow'||ui.overlay.code!==code)return;
+    ui.overlay.status='waiting';renderOverlay();
+    window.cloud.watchPairing(code,function(data){ onParentPairingUpdate(code,data); });
+  }).catch(function(e){ if(ui.overlay&&ui.overlay.code===code){ui.overlay.status='error';ui.overlay.error='Kunne ikke lave koden. Prøv igen.';renderOverlay();} });
+}
+function onParentPairingUpdate(code,data){
+  if(!data||!data.claimedBy)return;
+  if(!ui.overlay||ui.overlay.type!=='pairshow'||ui.overlay.code!==code||ui.overlay.status==='done')return;
+  if(!state.kidDevices||typeof state.kidDevices!=='object')state.kidDevices={};
+  state.kidDevices[data.claimedBy]=ui.overlay.kidId; save();
+  if(window.cloud.updatePairing)try{window.cloud.updatePairing(code,{approved:true});}catch(e){}
+  ui.overlay.status='done'; renderOverlay();
+  if(window.cloud.deletePairing)setTimeout(function(){try{window.cloud.deletePairing(code);}catch(e){}},5000);
 }
 function askUnpairKid(uid){ui.overlay={type:'unpairkid',uid:uid};renderOverlay();}
 function confirmUnpairKid(){const uid=ui.overlay.uid;if(state.kidDevices)delete state.kidDevices[uid];ui.overlay=null;save();render();toast('Enhed afkoblet');}
