@@ -311,7 +311,7 @@ const REWARD_EMOJIS=['🎬','🍕','🍦','📱','🛌','🎮','🍭','🎡','�
 /* ===== State ===== */
 const KEY='pling_v1';
 let state=normalize(load());
-let ui={screen:'loading',shownPoints:0,overlay:null,tasksOpen:true,parentTab:'opgaver',editId:null,editRewardId:null,parentId:null,currentKidId:null,authMode:'login',authError:'',familyId:null,cloudMsg:'',invited:false};
+let ui={screen:'loading',shownPoints:0,overlay:null,tasksOpen:true,parentTab:'opgaver',editId:null,editRewardId:null,parentId:null,currentKidId:null,authMode:'login',authError:'',familyId:null,cloudMsg:'',invited:false,kidDevice:null,kidPair:null};
 let cloudUser=null, lastWritten=null, pendingSignupName='';
 var pushSessionStart=Date.now(), notifPushed={};
 try{if(/[?&]family=/.test(location.search)){ui.authMode='signup';ui.invited=true;}}catch(e){}
@@ -320,6 +320,7 @@ function normalize(s){
   s.notifications=s.notifications||[]; s.notifyCategories=s.notifyCategories||{Oplevelser:true,Privilegier:true,Avatar:true};
   if(!Array.isArray(s.allowedEmails))s.allowedEmails=[];
   if(s.founderEmail===undefined)s.founderEmail=null;
+  if(!s.kidDevices||typeof s.kidDevices!=='object'||Array.isArray(s.kidDevices))s.kidDevices={};
   if(s.currentKidId===undefined)s.currentKidId=null;
   s.tasks.forEach(t=>{if(t.assignMode==null){t.assignMode='age';t.minAge=2;t.maxAge=18;} if(t.kidIds==null)t.kidIds=[]; if(t.weekdays==null)t.weekdays=[];});
   s.rewards.forEach(r=>{if(r.reset==null)r.reset='daily';});
@@ -328,7 +329,7 @@ function normalize(s){
   return s;
 }
 function load(){ try{const v=localStorage.getItem(KEY); return v?JSON.parse(v):null;}catch(e){return null;} }
-function cloudData(s){return {seq:s.seq,parents:s.parents,kids:s.kids,tasks:s.tasks,rewards:s.rewards,notifications:s.notifications,notifyCategories:s.notifyCategories,allowedEmails:s.allowedEmails||[],founderEmail:s.founderEmail||null};}
+function cloudData(s){return {seq:s.seq,parents:s.parents,kids:s.kids,tasks:s.tasks,rewards:s.rewards,notifications:s.notifications,notifyCategories:s.notifyCategories,allowedEmails:s.allowedEmails||[],founderEmail:s.founderEmail||null,kidDevices:s.kidDevices||{}};}
 function save(){ const payload=cloudData(state); lastWritten=JSON.stringify(payload); if(window.cloud&&cloudUser)window.cloud.save(payload); try{localStorage.setItem(KEY,JSON.stringify(state));}catch(e){} }
 function uid(p){ state.seq=(state.seq||1)+1; return p+state.seq; }
 
@@ -457,6 +458,7 @@ function render(){
   else if(ui.screen==='pavatar')h=pavatarScreen();
   else if(ui.screen==='parent')h=parentScreen();
   else if(ui.screen==='cloudmsg')h=cloudmsgScreen();
+  else if(ui.screen==='kidpair')h=kidPairScreen();
   app.innerHTML=h;
   const _sc2=app.querySelector('.scroll'); if(_sc2)_sc2.scrollTop=_st;
   ui._rendered=ui.screen;
@@ -501,6 +503,27 @@ function authScreen(){
       <button class="cta" id="authBtn" type="submit" style="margin-top:0;width:100%">${s?'Opret konto':'Log ind'}</button>
     </form>
     <button class="link" onclick="toggleAuthMode()">${s?'Har du allerede en konto? <b>Log ind</b>':'Ny her? <b>Opret konto</b>'}</button>
+    ${ui.invited?'':`<button class="link" onclick="startKidDevice()" style="margin-top:10px">Er du et barn? <b>Par denne enhed</b></button>`}
+  </div>`;
+}
+function kidPairScreen(){
+  const kp=ui.kidPair||{};
+  if(kp.status==='starting'||kp.status==='connecting'){
+    return `<div class="scr welcome">${avatarHTML({size:84,bodyColor:'#AEDFF7',hat:'🧢'})}<h1 style="font-size:22px">${kp.status==='connecting'?'Forbinder…':'Et øjeblik…'}</h1><p>${kp.status==='connecting'?'Din forælder tilføjede dig — henter dine opgaver.':'Klargør din kode.'}</p></div>`;
+  }
+  if(kp.status==='error'){
+    return `<div class="scr welcome">${avatarHTML({size:72,bodyColor:'#FFB6D9',hat:'🎩'})}<h1 style="font-size:22px">Hov…</h1><p>${esc(kp.error||'Noget gik galt.')}</p><button class="cta" onclick="startKidDevice()">Prøv igen</button><button class="link" onclick="exitKidPair()">Tilbage</button></div>`;
+  }
+  // showing code
+  const code=kp.code||'';
+  const digits=code.split('').map(c=>`<span style="display:inline-flex;align-items:center;justify-content:center;width:38px;height:52px;background:#fff;border:2px solid var(--purple);border-radius:12px;font-family:var(--poppins);font-weight:700;font-size:26px;color:var(--purple-dark)">${c}</span>`).join('');
+  return `<div class="scr welcome">
+    ${avatarHTML({size:76,bodyColor:'#AEDFF7',hat:'🧢'})}
+    <h1 style="font-size:22px">Din kode</h1>
+    <p>Vis denne kode til din forælder. Så tilføjer de dig på deres telefon 📱</p>
+    <div style="display:flex;gap:7px;margin:6px 0">${digits}</div>
+    <div class="goldbar" style="margin:6px 14px">⏳ Venter på din forælder… hold denne skærm åben.</div>
+    <button class="link" onclick="exitKidPair()">Fortryd</button>
   </div>`;
 }
 function av(id){const e=document.getElementById(id);return e?e.value.trim():'';}
@@ -510,7 +533,84 @@ function friendlyAuthError(err){const c=(err&&(err.code||err.message))||'';if(c.
 function authFail(err){ui.authError=friendlyAuthError(err);render();}
 function doSignup(){const n=av('authName'),e=av('authEmail'),p=av('authPass');if(!n){ui.authError='Skriv dit navn';render();return;}if(!e||p.length<6){ui.authError='Tjek e-mail og adgangskode (min. 6 tegn)';render();return;}pendingSignupName=n;ui.authError='';setAuthBusy('Opretter…');if(window.cloud)window.cloud.signup(e,p).catch(authFail);else authFail({code:'network'});}
 function doLogin(){const e=av('authEmail'),p=av('authPass');if(!e||!p){ui.authError='Skriv e-mail og adgangskode';render();return;}ui.authError='';setAuthBusy('Logger ind…');if(window.cloud)window.cloud.login(e,p).catch(authFail);else authFail({code:'network'});}
-function logout(){ui.currentKidId=null;ui.parentId=null;ui.overlay=null;ui.familyId=null;ui.cloudMsg='';lastWritten=null;if(window.cloud)window.cloud.logout();}
+function logout(){ui.currentKidId=null;ui.parentId=null;ui.overlay=null;ui.familyId=null;ui.cloudMsg='';ui.kidDevice=null;ui.kidPair=null;lastWritten=null;if(window.cloud)window.cloud.logout();}
+function resetThisDevice(){
+  try{localStorage.removeItem('pling_kidpair');localStorage.removeItem(KEY);}catch(e){}
+  try{var rm=[];for(var i=0;i<localStorage.length;i++){var k=localStorage.key(i);if(k&&(k.indexOf('pling_fid_')===0||k.indexOf('pling_nbase_')===0||k.indexOf('pling_ndis_')===0))rm.push(k);}rm.forEach(function(k){localStorage.removeItem(k);});}catch(e){}
+  ui.kidDevice=null;ui.currentKidId=null;ui.parentId=null;ui.overlay=null;ui.familyId=null;ui.cloudMsg='';ui.kidPair=null;lastWritten=null;
+  if(window.cloud&&window.cloud.logout)window.cloud.logout();
+  toast('Nulstillet på denne enhed');
+}
+function askResetApp(){ui.overlay={type:'resetapp'};renderOverlay();}
+function confirmResetApp(){ui.overlay=null;resetApp();}
+function resetApp(){
+  var myEmail=(((cloudUser&&cloudUser.email))||state.founderEmail||'').toLowerCase();
+  var name=(currentParent()&&currentParent().name)||pendingSignupName||'Forælder';
+  state=normalize({});
+  state.founderEmail=myEmail||null;
+  state.allowedEmails=myEmail?[myEmail]:[];
+  var p={id:uid('p'),name:name,email:myEmail||null,pin:null,bodyColor:'#B8C7F0',hat:'👓',pants:''};
+  state.parents=[p]; ui.parentId=p.id;
+  try{localStorage.removeItem('pling_kidpair');localStorage.removeItem(ndisKey());localStorage.removeItem(nbaseKey());}catch(e){}
+  ui.overlay=null; ui.kidDevice=null; ui.currentKidId=null; ui.parentTab='opgaver'; ui.screen='picker';
+  seedDefaults(); save(); render(); toast('Appen er nulstillet ✨');
+}
+
+/* ===== Barne-parring (barnets enhed) ===== */
+function genPairCode(){return String(Math.floor(100000+Math.random()*900000));}
+function startKidDevice(){
+  if(!window.cloud){ui.kidPair={status:'error',error:'Ingen forbindelse.'};ui.screen='kidpair';render();return;}
+  ui.kidPair={status:'starting'};ui.screen='kidpair';render();
+  window.cloud.anonLogin().then(function(cred){
+    var uid=cred&&cred.user&&cred.user.uid; if(!uid){throw new Error('no uid');}
+    var code=genPairCode();
+    return window.cloud.createPairing(code,{anonUid:uid,createdAt:Date.now(),expiresAt:Date.now()+30*60000,familyId:null,kidId:null}).then(function(){
+      ui.kidPair={status:'showing',code:code,uid:uid};render();
+      window.cloud.watchPairing(code,function(data){ onKidPairingResp(code,data); });
+    });
+  }).catch(function(e){ui.kidPair={status:'error',error:'Kunne ikke starte parring. Prøv igen.'};render();});
+}
+function onKidPairingResp(code,data){
+  if(!data||!data.familyId||!data.kidId)return;
+  if(!ui.kidPair||ui.kidPair.status==='connecting')return;
+  try{localStorage.setItem('pling_kidpair',JSON.stringify({familyId:data.familyId,kidId:data.kidId}));}catch(e){}
+  ui.kidPair={status:'connecting'};render();
+  if(window.cloud&&window.cloud.subscribeKid)window.cloud.subscribeKid();
+  if(window.cloud&&window.cloud.deletePairing)try{window.cloud.deletePairing(code);}catch(e){}
+}
+function exitKidPair(){
+  ui.kidPair=null;
+  try{localStorage.removeItem('pling_kidpair');}catch(e){}
+  if(window.cloud&&window.cloud.logout)window.cloud.logout();
+  ui.screen='auth';render();
+}
+function unpairThisDevice(){
+  try{localStorage.removeItem('pling_kidpair');}catch(e){}
+  ui.kidDevice=null;ui.kidPair=null;ui.currentKidId=null;lastWritten=null;
+  if(window.cloud&&window.cloud.logout)window.cloud.logout();
+  ui.screen='auth';render();
+}
+window.onKidFamily=function(user,data,kidId,pending){
+  if(pending)return;
+  if(!data){ ui.kidDevice=null; ui.cloudMsg='Denne enhed er blevet afkoblet. Åbn "Er du et barn?" for at parre igen.'; ui.screen='cloudmsg'; render(); return; }
+  var raw=JSON.stringify(data);
+  if(raw===lastWritten){ if(ui.screen==='kidpair'||ui.screen==='loading'){ui.kidDevice={familyId:window.__familyId||ui.familyId,kidId:kidId};ui.familyId=ui.kidDevice.familyId;go2kid(kidId);} return; }
+  lastWritten=raw; state=normalize(data);
+  ui.kidDevice={familyId:window.__familyId||ui.familyId,kidId:kidId}; ui.familyId=ui.kidDevice.familyId; ui.kidPair=null;
+  var k=state.kids.find(function(x){return x.id===kidId;});
+  if(!k){ ui.cloudMsg='Din profil findes ikke længere. Bed en forælder om at parre enheden igen.'; ui.screen='cloudmsg'; render(); return; }
+  ui.currentKidId=kidId;
+  if(!({home:1,shop:1,editor:1,history:1})[ui.screen])ui.screen='home';
+  ui.shownPoints=k.points; render();
+};
+function go2kid(kidId){ui.currentKidId=kidId;if(!({home:1,shop:1,editor:1,history:1})[ui.screen])ui.screen='home';ui.shownPoints=(currentKid()||{}).points||0;render();}
+window.onKidWaiting=function(){ if(!ui.kidDevice){ if(ui.screen!=='kidpair'){ui.screen='kidpair';render();} else if(!ui.kidPair||ui.kidPair.status!=='connecting'){ui.kidPair={status:'connecting'};render();} } };
+window.onKidError=function(err){
+  try{localStorage.removeItem('pling_kidpair');}catch(e){}
+  ui.kidDevice=null; ui.currentKidId=null; lastWritten=null;
+  ui.kidPair={status:'error',error:'Kunne ikke forbinde. Måske er enheden ikke godkendt endnu — eller den er blevet afkoblet. Prøv at parre igen.'};
+  ui.screen='kidpair'; render(); return true;
+};
 window.onCloudError=function(e){
   var c=String((e&&(e.code||e.message))||'');
   try{console.warn('cloud',c);}catch(_){}
@@ -519,7 +619,11 @@ window.onCloudError=function(e){
     ui.screen='cloudmsg'; render();
   }
 };
-window.onAuth=function(user){cloudUser=user||null;if(!user){ui.screen='auth';render();}};
+window.onAuth=function(user){
+  cloudUser=user||null;
+  if(!user){ui.screen='auth';ui.kidDevice=null;render();return;}
+  if(user.isAnonymous){var kp=null;try{kp=JSON.parse(localStorage.getItem('pling_kidpair')||'null');}catch(e){}if(!kp&&!ui.kidPair&&ui.screen==='loading'){ui.screen='auth';render();}}
+};
 window.onFamily=function(user,data,pending,fid){
   if(fid)ui.familyId=fid;
   if(pending)return; // vores egen lokale skrivning — lokal state er allerede opdateret
@@ -599,7 +703,7 @@ function homeScreen(){
         <button class="avatar-btn" onclick="go('editor')" title="Rediger avatar">${avatarHTML({size:54,bodyColor:k.bodyColor,hat:k.hat,pants:k.pants})}<span class="pen">✎</span></button>
         <div class="whoami"><div class="nm">${esc(k.name)}</div><div class="ag">${k.age} år</div></div>
         <div class="pill" id="pill"><span>🪙</span><span class="n" id="pts">${ui.shownPoints}</span></div>
-        <div class="lock" onclick="go('picker')" title="Skift profil">🔒</div>
+        ${ui.kidDevice?'':`<div class="lock" onclick="go('picker')" title="Skift profil">🔒</div>`}
       </div>
       <div class="today">I dag er det ${DAYS[new Date().getDay()]} ☀️</div>
       ${msg}${gold}
@@ -670,7 +774,8 @@ function editorScreen(){
       <div class="grid-h">Farve</div><div class="grid">${itemGrid(k,COLORS,'color',k.bodyColor)}</div>
       <div class="grid-h">Hat</div><div class="grid">${itemGrid(k,HATS,'hat',k.hat)}</div>
       <div class="grid-h">Bukser</div><div class="grid">${itemGrid(k,PANTS,'pants',k.pants)}</div>
-      <div class="hint" style="padding:16px 0 22px">Låste ting 🔒 køber du i butikken</div></div></div>`;
+      <div class="hint" style="padding:16px 0 22px">Låste ting 🔒 køber du i butikken</div>
+      ${ui.kidDevice?`<div style="text-align:center;padding:0 0 24px"><button class="link" onclick="askUnpair()">Afkobl denne enhed</button></div>`:''}</div></div>`;
 }
 function parentGrid(p,arr,kind,cur){
   return arr.map(it=>{
@@ -764,8 +869,14 @@ function tabPraemier(){
   return `<div class="admwrap"><button class="addbtn" onclick="addReward()">＋ Tilføj præmie</button>${rows}</div><div class="hint" style="padding:0 0 16px">Avatar-ting styres af appen og redigeres ikke her</div>`;
 }
 function tabBoern(){
-  const rows=state.kids.map(k=>`<div class="adm"><div class="adm-h">${avatarHTML({size:42,bodyColor:k.bodyColor,hat:k.hat,pants:k.pants})}<div class="adm-tt">${esc(k.name)}<div class="adm-sub">${k.age} år · 🪙 ${k.points}</div></div><button class="del" onclick="askDelKid('${k.id}')">✕</button></div></div>`).join('');
-  return `<div class="admwrap"><button class="addbtn" onclick="startAddChild()">＋ Tilføj barn</button>${rows||'<div class="empty">Ingen børn endnu</div>'}<div class="hint" style="padding:6px 0 16px">Parring med kode/QR til barnets egen enhed kommer i Fase 4</div></div>`;
+  const rows=state.kids.map(function(k){
+    const devs=Object.keys(state.kidDevices||{}).filter(function(uid){return state.kidDevices[uid]===k.id;});
+    const devList=devs.map(function(uid,i){return `<div class="setrow" style="margin:8px 0 0"><span style="font-size:16px">📱</span><div class="t">Enhed ${i+1}<div style="font-size:11px;color:var(--muted2);font-weight:400">id ${esc(uid.slice(0,6))}…</div></div><button class="del" onclick="askUnpairKid('${esc(uid)}')">✕</button></div>`;}).join('');
+    const sub=`${k.age} år · 🪙 ${k.points}`+(devs.length?` · ${devs.length} enhed${devs.length>1?'er':''}`:'');
+    return `<div class="adm"><div class="adm-h">${avatarHTML({size:42,bodyColor:k.bodyColor,hat:k.hat,pants:k.pants})}<div class="adm-tt">${esc(k.name)}<div class="adm-sub">${sub}</div></div><button class="del" onclick="askDelKid('${k.id}')">✕</button></div>
+      <div class="adm-body"><button class="btn ghost" style="width:100%" onclick="startPairEnter('${k.id}')">📱 Par en enhed til ${esc(k.name)}</button>${devList}</div></div>`;
+  }).join('');
+  return `<div class="admwrap"><button class="addbtn" onclick="startAddChild()">＋ Tilføj barn</button>${rows||'<div class="empty">Ingen børn endnu</div>'}<div class="hint" style="padding:6px 0 16px">Egen enhed: barnet åbner appen → "Er du et barn? Par denne enhed" → viser dig en kode, som du taster her.</div></div>`;
 }
 function tabOverblik(){
   if(!state.kids.length)return '<div class="empty">Tilføj et barn for at se overblik</div>';
@@ -781,6 +892,7 @@ function tabOverblik(){
 function tabIndstil(){
   const meLC=((cloudUser&&cloudUser.email)||'').toLowerCase();
   const fLC=(state.founderEmail||'').toLowerCase();
+  const isOwner=(!fLC)||(!!meLC&&fLC===meLC);
   const plist=state.parents.map(function(p){
     const pe=(p.email||'').toLowerCase();
     const isOwner=fLC&&pe===fLC, isMe=meLC&&pe===meLC, canRemove=!isOwner&&!isMe;
@@ -798,6 +910,9 @@ function tabIndstil(){
     <div class="set-h">Konto</div>
     <div class="setrow"><div class="t">Skift din PIN 🔒</div><button class="btn ghost" style="padding:9px 16px" onclick="startChangePin()">Skift</button></div>
     <div class="setrow"><div class="t">Logget ind som forælder</div><button class="btn ghost" style="padding:9px 16px" onclick="logout()">Log ud</button></div>
+    <div class="set-h">Nulstilling</div>
+    <div class="setrow"><div class="t">Nulstil denne enhed<div style="font-size:11.5px;color:var(--muted2);font-weight:400">Logger ud og rydder lokalt — data i skyen røres ikke. Godt til at teste login/parring forfra.</div></div><button class="btn ghost" style="padding:9px 16px;flex-shrink:0" onclick="resetThisDevice()">Nulstil</button></div>
+    ${isOwner?`<div class="setrow"><div class="t">Slet alt og start forfra<div style="font-size:11.5px;color:var(--muted2);font-weight:400">Sletter børn, opgaver, præmier, andre forældre og parrede enheder — i skyen. Kan ikke fortrydes.</div></div><button class="btn" style="background:#E0468A;padding:9px 16px;flex-shrink:0" onclick="askResetApp()">Slet alt</button></div>`:''}
     <div class="set-h">Seneste</div>${feedHtml}</div>`;
 }
 
@@ -815,6 +930,10 @@ function renderOverlay(){
   else if(o.type==='invite')ov.innerHTML=inviteOverlay(o);
   else if(o.type==='setpin')ov.innerHTML=setpinOverlay(o);
   else if(o.type==='delparent')ov.innerHTML=delParentOverlay(o);
+  else if(o.type==='pairenter')ov.innerHTML=pairEnterOverlay(o);
+  else if(o.type==='unpairkid')ov.innerHTML=unpairKidOverlay(o);
+  else if(o.type==='unpairdev')ov.innerHTML=unpairDevOverlay(o);
+  else if(o.type==='resetapp')ov.innerHTML=resetAppOverlay(o);
 }
 function dotsHTML(n){return [0,1,2,3].map(i=>`<i class="${i<n?'f':''}"></i>`).join('');}
 function setDots(id,n){const el=document.getElementById(id);if(el)el.innerHTML=dotsHTML(n);}
@@ -870,6 +989,17 @@ function delKidOverlay(o){
   const k=state.kids.find(x=>x.id===o.kidId);
   return `<div class="backdrop"><div class="sheet"><h3>Slet ${esc(k?k.name:'')}?</h3><div style="font-size:14px;color:var(--muted);margin-top:6px">Alle point og køb for dette barn slettes. Det kan ikke fortrydes.</div><div class="rowbtns"><button class="btn ghost" onclick="closeOverlay()">Annullér</button><button class="btn" style="background:#E0468A" onclick="confirmDelKid()">Slet</button></div></div></div>`;
 }
+function pairEnterOverlay(o){
+  const k=state.kids.find(x=>x.id===o.kidId);
+  return `<div class="backdrop"><div class="sheet"><h3>Par en enhed til ${esc(k?k.name:'')}</h3>
+    <div style="font-size:13.5px;color:var(--muted);margin-top:4px">På barnets enhed: åbn appen → "Er du et barn? Par denne enhed". Skriv den 6-cifrede kode, den viser, her:</div>
+    <label class="fld">Kode fra barnets enhed</label><input class="txt" inputmode="numeric" maxlength="6" value="${esc(o.code||'')}" placeholder="6 cifre" oninput="ui.overlay.code=this.value.replace(/[^0-9]/g,'').slice(0,6)">
+    <div class="err" style="color:var(--coral-tx)">${o.error||''}</div>
+    <div class="rowbtns"><button class="btn ghost" onclick="closeOverlay()">Annullér</button><button class="btn" onclick="confirmPairEnter()">${o.busy?'Parrer…':'Par enhed'}</button></div></div></div>`;
+}
+function unpairKidOverlay(o){return `<div class="backdrop"><div class="sheet"><h3>Afkobl enhed?</h3><div style="font-size:14px;color:var(--muted);margin-top:6px">Enheden mister adgang til appen. Barnet kan parre igen med en ny kode.</div><div class="rowbtns"><button class="btn ghost" onclick="closeOverlay()">Annullér</button><button class="btn" style="background:#E0468A" onclick="confirmUnpairKid()">Afkobl</button></div></div></div>`;}
+function unpairDevOverlay(){return `<div class="backdrop"><div class="sheet"><h3>Afkobl denne enhed?</h3><div style="font-size:14px;color:var(--muted);margin-top:6px">Du skal parre igen med en ny kode fra din forælder.</div><div class="rowbtns"><button class="btn ghost" onclick="closeOverlay()">Annullér</button><button class="btn" style="background:#E0468A" onclick="unpairThisDevice()">Afkobl</button></div></div></div>`;}
+function resetAppOverlay(){return `<div class="backdrop"><div class="sheet"><h3>Slet alt og start forfra?</h3><div style="font-size:14px;color:var(--muted);margin-top:6px">Alle børn, opgaver, præmier, point, andre forældre og parrede enheder slettes, og familien starter forfra. Det kan <b>ikke</b> fortrydes.</div><div class="rowbtns"><button class="btn ghost" onclick="closeOverlay()">Annullér</button><button class="btn" style="background:#E0468A" onclick="confirmResetApp()">Slet alt</button></div></div></div>`;}
 function delParentOverlay(o){
   const p=state.parents.find(x=>x.id===o.parentId);
   const body=(p&&p.email)?('Adgangen for <b>'+esc(p.email)+'</b> fjernes, og de kan ikke længere logge ind i familien. Du kan altid invitere dem igen — fx med en ny e-mailadresse.'):'Profilen fjernes fra familien.';
@@ -894,6 +1024,7 @@ function inviteOverlay(o){
 
 /* ===== Actions ===== */
 function go(screen){
+  if(ui.kidDevice&&(screen==='picker'||screen==='parent'||screen==='pavatar'))return;
   if((screen==='home'||screen==='shop'||screen==='editor'||screen==='history')&&currentKid())ui.shownPoints=currentKid().points;
   ui.screen=screen; render();
 }
@@ -992,6 +1123,26 @@ function confirmAddChild(){
 }
 function askDelKid(id){ui.overlay={type:'delkid',kidId:id};renderOverlay();}
 function confirmDelKid(){const id=ui.overlay.kidId;state.kids=state.kids.filter(k=>k.id!==id);if(ui.currentKidId===id)ui.currentKidId=null;ui.overlay=null;save();render();}
+function startPairEnter(kidId){ui.overlay={type:'pairenter',kidId:kidId,code:'',error:'',busy:false};renderOverlay();}
+function confirmPairEnter(){
+  const o=ui.overlay; const code=(o.code||'').trim();
+  if(!/^[0-9]{6}$/.test(code)){o.error='Skriv den 6-cifrede kode';renderOverlay();return;}
+  if(!window.cloud||!window.cloud.readPairing){o.error='Ingen forbindelse';renderOverlay();return;}
+  o.busy=true;o.error='';renderOverlay();
+  window.cloud.readPairing(code).then(function(data){
+    if(!ui.overlay||ui.overlay.type!=='pairenter')return;
+    if(!data||!data.anonUid){o.error='Ugyldig kode. Tjek tallene på barnets enhed.';o.busy=false;renderOverlay();return;}
+    if(data.expiresAt&&Date.now()>data.expiresAt){o.error='Koden er udløbet. Bed barnet lave en ny.';o.busy=false;renderOverlay();return;}
+    if(!state.kidDevices||typeof state.kidDevices!=='object')state.kidDevices={};
+    state.kidDevices[data.anonUid]=o.kidId; save();
+    if(window.cloud.updatePairing)try{window.cloud.updatePairing(code,{familyId:ui.familyId,kidId:o.kidId,approved:true});}catch(e){}
+    var k=state.kids.find(function(x){return x.id===o.kidId;});
+    ui.overlay=null; render(); toast((k?k.name:'Barnet')+'s enhed er parret 🎉');
+  }).catch(function(e){if(ui.overlay&&ui.overlay.type==='pairenter'){o.error='Kunne ikke slå koden op. Prøv igen.';o.busy=false;renderOverlay();}});
+}
+function askUnpairKid(uid){ui.overlay={type:'unpairkid',uid:uid};renderOverlay();}
+function confirmUnpairKid(){const uid=ui.overlay.uid;if(state.kidDevices)delete state.kidDevices[uid];ui.overlay=null;save();render();toast('Enhed afkoblet');}
+function askUnpair(){ui.overlay={type:'unpairdev'};renderOverlay();}
 function askDelParent(pid){ui.overlay={type:'delparent',parentId:pid};renderOverlay();}
 function confirmDelParent(){
   const id=ui.overlay.parentId; const p=state.parents.find(x=>x.id===id); if(!p){closeOverlay();return;}
@@ -1086,8 +1237,9 @@ let toastT;
 function toast(m){let t=document.querySelector('.toast');if(t)t.remove();t=document.createElement('div');t.className='toast';t.textContent=m;document.getElementById('frame').appendChild(t);clearTimeout(toastT);toastT=setTimeout(()=>t.remove(),2100);}
 
 /* ===== Back-knap ===== */
-function atRoot(){return ui.screen==='welcome'||ui.screen==='picker';}
+function atRoot(){return ui.screen==='welcome'||ui.screen==='picker'||ui.screen==='auth'||ui.screen==='kidpair'||ui.screen==='cloudmsg'||(ui.kidDevice&&ui.screen==='home');}
 function appBack(){
+  if(ui.kidDevice){ if(ui.screen==='history')go('shop'); else if(ui.screen==='editor'||ui.screen==='shop')go('home'); return; }
   if(ui.screen==='editor')go('home');
   else if(ui.screen==='history')go('shop');
   else if(ui.screen==='pavatar')go('parent');
@@ -1105,20 +1257,42 @@ setTimeout(function(){ if(ui.screen==='loading'){ ui.screen='auth'; render(); } 
 </script>
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
-  import { getAuth, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
-  import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
+  import { getAuth, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, signInAnonymously, signOut } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
+  import { getFirestore, doc, setDoc, getDoc, deleteDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
   try{
     const cfg={apiKey:"AIzaSyD3xcxmum8kO70g0q1tDFMYIU25Mb-blOM",authDomain:"pling-4fc0b.firebaseapp.com",projectId:"pling-4fc0b",storageBucket:"pling-4fc0b.firebasestorage.app",messagingSenderId:"800464506788",appId:"1:800464506788:web:0a141f49711bc026a5fb31"};
-    const app=initializeApp(cfg); const auth=getAuth(app); const db=getFirestore(app); let unsub=null;
+    const app=initializeApp(cfg); const auth=getAuth(app); const db=getFirestore(app); let unsub=null, kidRetry=null, kidTries=0;
     window.cloud={
       signup:function(e,p){return createUserWithEmailAndPassword(auth,e,p);},
       login:function(e,p){return signInWithEmailAndPassword(auth,e,p);},
       logout:function(){return signOut(auth);},
-      save:function(data){ var fid=window.__familyId||(auth.currentUser&&auth.currentUser.uid); if(fid) return setDoc(doc(db,'families',fid),data); }
+      save:function(data){ var fid=window.__familyId||(auth.currentUser&&auth.currentUser.uid); if(fid) return setDoc(doc(db,'families',fid),data); },
+      anonLogin:function(){return signInAnonymously(auth);},
+      createPairing:function(code,data){return setDoc(doc(db,'pairings',code),data);},
+      updatePairing:function(code,data){return setDoc(doc(db,'pairings',code),data,{merge:true});},
+      readPairing:function(code){return getDoc(doc(db,'pairings',code)).then(function(s){return s.exists()?s.data():null;});},
+      deletePairing:function(code){return deleteDoc(doc(db,'pairings',code));},
+      watchPairing:function(code,cb){return onSnapshot(doc(db,'pairings',code),function(s){cb(s.exists()?s.data():null);},function(e){});},
+      subscribeKid:function(){ kidTries=0; if(auth.currentUser) subscribeKidFamily(auth.currentUser); }
     };
-    onAuthStateChanged(auth,function(user){
+    function subscribeKidFamily(user){
+      var kp=null; try{kp=JSON.parse(localStorage.getItem('pling_kidpair')||'null');}catch(e){}
+      if(!kp||!kp.familyId){ if(window.onAuth)window.onAuth(user); return; }
+      window.__familyId=kp.familyId;
       if(unsub){unsub();unsub=null;}
+      unsub=onSnapshot(doc(db,'families',kp.familyId),
+        function(snap){ kidTries=0; if(kidRetry){clearTimeout(kidRetry);kidRetry=null;} if(window.onKidFamily)window.onKidFamily(user,snap.exists()?snap.data():null,kp.kidId,snap.metadata.hasPendingWrites); },
+        function(err){ unsub=null; kidTries++; if(kidTries<=5){ if(window.onKidWaiting)window.onKidWaiting(); kidRetry=setTimeout(function(){subscribeKidFamily(user);},2500); } else { kidTries=0; if(window.onKidError)window.onKidError(err); } });
+    }
+    onAuthStateChanged(auth,function(user){
+      if(unsub){unsub();unsub=null;} if(kidRetry){clearTimeout(kidRetry);kidRetry=null;} kidTries=0;
       if(user){
+        if(user.isAnonymous){
+          var kp=null; try{kp=JSON.parse(localStorage.getItem('pling_kidpair')||'null');}catch(e){}
+          if(kp&&kp.familyId){ subscribeKidFamily(user); }
+          if(window.onAuth)window.onAuth(user);
+          return;
+        }
         var fid=null;
         try{var m=location.search.match(/[?&]family=([^&]+)/);if(m)fid=decodeURIComponent(m[1]);}catch(e){}
         if(!fid){try{fid=localStorage.getItem('pling_fid_'+user.uid);}catch(e){}}
