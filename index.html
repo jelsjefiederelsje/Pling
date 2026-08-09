@@ -312,7 +312,7 @@ const REWARD_EMOJIS=['🎬','🍕','🍦','📱','🛌','🎮','🍭','🎡','�
 const KEY='pling_v1';
 let state=normalize(load());
 let ui={screen:'loading',shownPoints:0,overlay:null,tasksOpen:true,parentTab:'opgaver',editId:null,editRewardId:null,parentId:null,currentKidId:null,authMode:'login',authError:''};
-let cloudUser=null, lastRaw=null, pendingSignupName='';
+let cloudUser=null, lastWritten=null, pendingSignupName='';
 function normalize(s){
   s=s||{}; s.seq=s.seq||1; s.parents=s.parents||[]; s.kids=s.kids||[]; s.tasks=s.tasks||[]; s.rewards=s.rewards||[];
   s.notifications=s.notifications||[]; s.notifyCategories=s.notifyCategories||{Oplevelser:true,Privilegier:true,Avatar:true};
@@ -325,7 +325,7 @@ function normalize(s){
 }
 function load(){ try{const v=localStorage.getItem(KEY); return v?JSON.parse(v):null;}catch(e){return null;} }
 function cloudData(s){return {seq:s.seq,parents:s.parents,kids:s.kids,tasks:s.tasks,rewards:s.rewards,notifications:s.notifications,notifyCategories:s.notifyCategories};}
-function save(){ const payload=cloudData(state); if(window.cloud&&cloudUser)window.cloud.save(payload); try{localStorage.setItem(KEY,JSON.stringify(state));}catch(e){} }
+function save(){ const payload=cloudData(state); lastWritten=JSON.stringify(payload); if(window.cloud&&cloudUser)window.cloud.save(payload); try{localStorage.setItem(KEY,JSON.stringify(state));}catch(e){} }
 function uid(p){ state.seq=(state.seq||1)+1; return p+state.seq; }
 
 function seedDefaults(){
@@ -468,9 +468,10 @@ function doLogin(){const e=av('authEmail'),p=av('authPass');if(!e||!p){ui.authEr
 function logout(){ui.currentKidId=null;ui.parentId=null;ui.overlay=null;if(window.cloud)window.cloud.logout();}
 window.onCloudError=function(e){try{console.warn('cloud',e&&(e.code||e.message||e));}catch(_){}};
 window.onAuth=function(user){cloudUser=user||null;if(!user){ui.screen='auth';render();}};
-window.onFamily=function(user,data){
-  if(data){const raw=JSON.stringify(data);if(raw===lastRaw)return;lastRaw=raw;state=normalize(data);if((!ui.parentId||!state.parents.find(function(x){return x.id===ui.parentId;}))&&state.parents[0])ui.parentId=state.parents[0].id;if(ui.screen==='auth'||ui.screen==='loading')ui.screen='picker';render();}
-  else{state=normalize({});const p={id:uid('p'),name:pendingSignupName||'Forælder',pin:null,bodyColor:'#B8C7F0',hat:'👓',pants:''};state.parents=[p];ui.parentId=p.id;seedDefaults();lastRaw=null;ui.screen='picker';save();render();}
+window.onFamily=function(user,data,pending){
+  if(pending)return; // vores egen lokale skrivning — lokal state er allerede opdateret
+  if(data){const raw=JSON.stringify(data);if(raw===lastWritten)return;lastWritten=raw;state=normalize(data);if((!ui.parentId||!state.parents.find(function(x){return x.id===ui.parentId;}))&&state.parents[0])ui.parentId=state.parents[0].id;if(ui.screen==='auth'||ui.screen==='loading')ui.screen='picker';render();}
+  else{state=normalize({});const p={id:uid('p'),name:pendingSignupName||'Forælder',pin:null,bodyColor:'#B8C7F0',hat:'👓',pants:''};state.parents=[p];ui.parentId=p.id;seedDefaults();ui.screen='picker';save();render();}
 };
 function pickerScreen(){
   const kids=state.kids.map(k=>`
@@ -778,7 +779,7 @@ function toggleTask(id,ev){
     k.completed[id]=pk; k.points+=t.points; k.totalEarned=(k.totalEarned||0)+t.points;
     save(); render(); countTo(from,k.points); floatText(x,y,'+'+t.points,true); confettiAt(x,y);
     if(allDone(k)&&k.dailyBonusClaimed!==todayKey()){
-      setTimeout(()=>{const f2=k.points;k.dailyBonusClaimed=todayKey();k.points+=15;k.totalEarned=(k.totalEarned||0)+15;save();render();countTo(f2,k.points);confettiBurstCenter();toast('🌟 Hele dagen klaret! +15 bonus');},650);
+      setTimeout(function(){var kk=currentKid();if(!kk||kk.dailyBonusClaimed===todayKey()||!allDone(kk))return;var f2=kk.points;kk.dailyBonusClaimed=todayKey();kk.points+=15;kk.totalEarned=(kk.totalEarned||0)+15;save();render();countTo(f2,kk.points);confettiBurstCenter();toast('🌟 Hele dagen klaret! +15 bonus');},650);
     }
   }else{
     delete k.completed[id]; k.points=Math.max(0,k.points-t.points); k.totalEarned=Math.max(0,(k.totalEarned||0)-t.points);
@@ -947,7 +948,7 @@ setTimeout(function(){ if(ui.screen==='loading'){ ui.screen='auth'; render(); } 
     };
     onAuthStateChanged(auth,function(user){
       if(unsub){unsub();unsub=null;}
-      if(user){ unsub=onSnapshot(doc(db,'families',user.uid),function(snap){ if(window.onFamily)window.onFamily(user,snap.exists()?snap.data():null); },function(err){ if(window.onCloudError)window.onCloudError(err); }); }
+      if(user){ unsub=onSnapshot(doc(db,'families',user.uid),function(snap){ if(window.onFamily)window.onFamily(user,snap.exists()?snap.data():null,snap.metadata.hasPendingWrites); },function(err){ if(window.onCloudError)window.onCloudError(err); }); }
       if(window.onAuth)window.onAuth(user);
     });
   }catch(e){ if(window.onCloudError)window.onCloudError(e); }
