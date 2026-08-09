@@ -318,6 +318,7 @@ function normalize(s){
   s=s||{}; s.seq=s.seq||1; s.parents=s.parents||[]; s.kids=s.kids||[]; s.tasks=s.tasks||[]; s.rewards=s.rewards||[];
   s.notifications=s.notifications||[]; s.notifyCategories=s.notifyCategories||{Oplevelser:true,Privilegier:true,Avatar:true};
   if(!Array.isArray(s.allowedEmails))s.allowedEmails=[];
+  if(s.founderEmail===undefined)s.founderEmail=null;
   if(s.currentKidId===undefined)s.currentKidId=null;
   s.tasks.forEach(t=>{if(t.assignMode==null){t.assignMode='age';t.minAge=2;t.maxAge=18;} if(t.kidIds==null)t.kidIds=[]; if(t.weekdays==null)t.weekdays=[];});
   s.rewards.forEach(r=>{if(r.reset==null)r.reset='daily';});
@@ -326,7 +327,7 @@ function normalize(s){
   return s;
 }
 function load(){ try{const v=localStorage.getItem(KEY); return v?JSON.parse(v):null;}catch(e){return null;} }
-function cloudData(s){return {seq:s.seq,parents:s.parents,kids:s.kids,tasks:s.tasks,rewards:s.rewards,notifications:s.notifications,notifyCategories:s.notifyCategories,allowedEmails:s.allowedEmails||[]};}
+function cloudData(s){return {seq:s.seq,parents:s.parents,kids:s.kids,tasks:s.tasks,rewards:s.rewards,notifications:s.notifications,notifyCategories:s.notifyCategories,allowedEmails:s.allowedEmails||[],founderEmail:s.founderEmail||null};}
 function save(){ const payload=cloudData(state); lastWritten=JSON.stringify(payload); if(window.cloud&&cloudUser)window.cloud.save(payload); try{localStorage.setItem(KEY,JSON.stringify(state));}catch(e){} }
 function uid(p){ state.seq=(state.seq||1)+1; return p+state.seq; }
 
@@ -492,8 +493,13 @@ window.onFamily=function(user,data,pending,fid){
     lastWritten=raw; state=normalize(data);
     var changed=false;
     if(isFounder&&myEmail){
+      if(!state.founderEmail){state.founderEmail=myEmail;changed=true;}
       if(state.allowedEmails.map(function(e){return (e||'').toLowerCase();}).indexOf(myEmail)<0){state.allowedEmails.push(myEmail);changed=true;}
-      if(state.parents[0]&&!state.parents[0].email){state.parents[0].email=myEmail;changed=true;}
+      var fp=state.parents.find(function(p){return (p.email||'').toLowerCase()===myEmail;});
+      if(!fp){
+        if(state.parents[0]&&!state.parents[0].email){state.parents[0].email=myEmail;changed=true;}
+        else{state.parents.push({id:uid('p'),name:pendingSignupName||emailName(myEmail),email:myEmail,pin:null,bodyColor:'#B8C7F0',hat:'👓',pants:''});changed=true;}
+      }
     }
     var mine=myEmail?state.parents.find(function(p){return (p.email||'').toLowerCase()===myEmail;}):null;
     if(!mine&&myEmail&&!isFounder){
@@ -503,16 +509,18 @@ window.onFamily=function(user,data,pending,fid){
     if(mine)ui.parentId=mine.id;
     else if((!ui.parentId||!state.parents.find(function(x){return x.id===ui.parentId;}))&&state.parents[0])ui.parentId=state.parents[0].id;
     if(changed)save();
-    if(ui.screen==='auth'||ui.screen==='loading'||ui.screen==='cloudmsg')ui.screen='picker';
+    var firstLand=(ui.screen==='auth'||ui.screen==='loading'||ui.screen==='cloudmsg');
+    if(firstLand)ui.screen='picker';
+    if(firstLand&&mine&&!mine.pin)ui.overlay={type:'setpin',parentId:mine.id,step:'pin1',pin1:'',pin2:'',error:''};
     render();
   } else {
     if(!isFounder){
       ui.cloudMsg='Vi kunne ikke finde familien bag linket endnu. Bed forælderen om at sende invitationen igen, eller log ind med den konto der oprettede familien.';
       ui.screen='cloudmsg'; render(); return;
     }
-    state=normalize({}); state.allowedEmails=myEmail?[myEmail]:[];
+    state=normalize({}); state.allowedEmails=myEmail?[myEmail]:[]; state.founderEmail=myEmail||null;
     const p={id:uid('p'),name:pendingSignupName||'Forælder',email:myEmail||null,pin:null,bodyColor:'#B8C7F0',hat:'👓',pants:''};
-    state.parents=[p]; ui.parentId=p.id; seedDefaults(); ui.screen='picker'; save(); render();
+    state.parents=[p]; ui.parentId=p.id; seedDefaults(); ui.screen='picker'; ui.overlay={type:'setpin',parentId:p.id,step:'pin1',pin1:'',pin2:'',error:''}; save(); render();
   }
 };
 function pickerScreen(){
@@ -732,7 +740,14 @@ function tabOverblik(){
   }).join('')+'</div>';
 }
 function tabIndstil(){
-  const plist=state.parents.map(p=>`<div class="setrow">${avatarHTML({size:34,bodyColor:p.bodyColor||'#B8C7F0',hat:p.hat||'👓'})}<div class="t">${esc(p.name)}${p.email?`<div style="font-size:11.5px;color:var(--muted2);font-weight:400">${esc(p.email)}</div>`:''}</div></div>`).join('');
+  const meLC=((cloudUser&&cloudUser.email)||'').toLowerCase();
+  const fLC=(state.founderEmail||'').toLowerCase();
+  const plist=state.parents.map(function(p){
+    const pe=(p.email||'').toLowerCase();
+    const isOwner=fLC&&pe===fLC, isMe=meLC&&pe===meLC, canRemove=!isOwner&&!isMe;
+    const tag=isOwner?' <span style="font-size:10px;color:var(--muted3)">(ejer)</span>':(isMe?' <span style="font-size:10px;color:var(--muted3)">(dig)</span>':'');
+    return `<div class="setrow">${avatarHTML({size:34,bodyColor:p.bodyColor||'#B8C7F0',hat:p.hat||'👓'})}<div class="t">${esc(p.name)}${tag}${p.email?`<div style="font-size:11.5px;color:var(--muted2);font-weight:400">${esc(p.email)}</div>`:''}</div>${canRemove?`<button class="del" onclick="askDelParent('${p.id}')">✕</button>`:''}</div>`;
+  }).join('');
   const nc=state.notifyCategories;
   const toggle=(cat,lbl)=>`<div class="setrow"><div class="t">${lbl}</div><label class="sw"><input type="checkbox" ${nc[cat]!==false?'checked':''} onchange="setNotify('${cat}',this.checked)"><span></span></label></div>`;
   const feed=state.notifications.slice(-8).reverse();
@@ -742,6 +757,7 @@ function tabIndstil(){
     <div class="hint" style="padding:6px 14px 0;text-align:left">Den anden forælder får et link og laver sit eget login. Du kan aldrig blive låst ude af din egen familie.</div>
     <div class="set-h">Få besked når børnene indløser</div>${toggle('Oplevelser','🎉 Oplevelser')}${toggle('Privilegier','⭐ Privilegier')}${toggle('Avatar','🎨 Avatar')}
     <div class="set-h">Konto</div>
+    <div class="setrow"><div class="t">Skift din PIN 🔒</div><button class="btn ghost" style="padding:9px 16px" onclick="startChangePin()">Skift</button></div>
     <div class="setrow"><div class="t">Logget ind som forælder</div><button class="btn ghost" style="padding:9px 16px" onclick="logout()">Log ud</button></div>
     <div class="set-h">Seneste</div>${feedHtml}</div>`;
 }
@@ -758,6 +774,8 @@ function renderOverlay(){
   else if(o.type==='emoji')ov.innerHTML=emojiOverlay(o);
   else if(o.type==='delkid')ov.innerHTML=delKidOverlay(o);
   else if(o.type==='invite')ov.innerHTML=inviteOverlay(o);
+  else if(o.type==='setpin')ov.innerHTML=setpinOverlay(o);
+  else if(o.type==='delparent')ov.innerHTML=delParentOverlay(o);
 }
 function dotsHTML(n){return [0,1,2,3].map(i=>`<i class="${i<n?'f':''}"></i>`).join('');}
 function setDots(id,n){const el=document.getElementById(id);if(el)el.innerHTML=dotsHTML(n);}
@@ -782,6 +800,15 @@ function pinOverlay(o){
     <div class="dots" id="pinDots">${dotsHTML(o.entered.length)}</div><div class="err" id="pinErr">${o.error||''}</div>
     ${keypad('enterPin')}<button class="cancel" onclick="closeOverlay()">Annullér</button></div>`;
 }
+function setpinOverlay(o){
+  const p=state.parents.find(x=>x.id===o.parentId);
+  const pin=o.step==='pin1'?o.pin1:o.pin2;
+  const head=o.step==='pin1'?(o.change?'Skift din PIN':'Vælg en PIN'):'Bekræft din PIN';
+  const desc=o.step==='pin1'?('Hej '+esc(p?p.name:'')+' — vælg en 4-cifret PIN. Den beskytter din forælder-profil, så andre ikke kan gå ind på din konto.'):'Skriv din PIN igen.';
+  return `<div class="setup" id="setpinBox"><h2>${head}</h2><div class="desc">${desc}</div>
+    <div class="dots" id="setpinDots">${dotsHTML(pin.length)}</div><div class="err" id="setpinErr">${o.error||''}</div>
+    ${keypad('setPinKey')}<button class="cancel" onclick="closeOverlay()">Annullér</button></div>`;
+}
 function addChildOverlay(o){
   return `<div class="backdrop"><div class="sheet"><h3>Tilføj barn</h3>
     <label class="fld">Navn</label><input class="txt" value="${esc(o.name||'')}" placeholder="Barnets navn" oninput="ui.overlay.name=this.value">
@@ -803,6 +830,13 @@ function emojiOverlay(o){
 function delKidOverlay(o){
   const k=state.kids.find(x=>x.id===o.kidId);
   return `<div class="backdrop"><div class="sheet"><h3>Slet ${esc(k?k.name:'')}?</h3><div style="font-size:14px;color:var(--muted);margin-top:6px">Alle point og køb for dette barn slettes. Det kan ikke fortrydes.</div><div class="rowbtns"><button class="btn ghost" onclick="closeOverlay()">Annullér</button><button class="btn" style="background:#E0468A" onclick="confirmDelKid()">Slet</button></div></div></div>`;
+}
+function delParentOverlay(o){
+  const p=state.parents.find(x=>x.id===o.parentId);
+  const body=(p&&p.email)?('Adgangen for <b>'+esc(p.email)+'</b> fjernes, og de kan ikke længere logge ind i familien. Du kan altid invitere dem igen — fx med en ny e-mailadresse.'):'Profilen fjernes fra familien.';
+  return `<div class="backdrop"><div class="sheet"><h3>Fjern ${esc(p?p.name:'')}?</h3>
+    <div style="font-size:14px;color:var(--muted);margin-top:6px">${body}</div>
+    <div class="rowbtns"><button class="btn ghost" onclick="closeOverlay()">Annullér</button><button class="btn" style="background:#E0468A" onclick="confirmDelParent()">Fjern</button></div></div></div>`;
 }
 function inviteOverlay(o){
   if(o.link){
@@ -878,7 +912,24 @@ function finishParent(name,pin,addMode){
   if(addMode){ui.screen='parent';ui.parentTab='indstil';render();toast('Forælder tilføjet 🎉');}
   else{ui.screen='picker';render();toast('Forælderkonto oprettet 🎉');setTimeout(()=>{if(state.kids.length===0)startAddChild();},500);}
 }
-function askParentPin(pid){const p=state.parents.find(x=>x.id===pid);if(p&&!p.pin){ui.parentId=pid;ui.parentTab='opgaver';ui.screen='parent';render();return;}ui.overlay={type:'pin',parentId:pid,entered:'',error:''};renderOverlay();}
+function askParentPin(pid){const p=state.parents.find(x=>x.id===pid);if(!p)return;if(!p.pin){ui.overlay={type:'setpin',parentId:pid,step:'pin1',pin1:'',pin2:'',error:''};renderOverlay();return;}ui.overlay={type:'pin',parentId:pid,entered:'',error:''};renderOverlay();}
+function startChangePin(){const p=currentParent();if(!p)return;ui.overlay={type:'setpin',parentId:p.id,step:'pin1',pin1:'',pin2:'',error:'',change:true};renderOverlay();}
+function setPinKey(d){
+  const o=ui.overlay; const key=o.step==='pin1'?'pin1':'pin2';
+  if(d==='del'){o[key]=o[key].slice(0,-1);setDots('setpinDots',o[key].length);return;}
+  if(o[key].length>=4)return;
+  o[key]+=d; setDots('setpinDots',o[key].length);
+  if(o[key].length===4){
+    if(o.step==='pin1'){setTimeout(function(){o.step='pin2';o.error='';renderOverlay();},170);}
+    else{
+      if(o.pin2===o.pin1){
+        const p=state.parents.find(x=>x.id===o.parentId); if(p)p.pin=o.pin1; save();
+        if(o.change){ui.overlay=null;render();toast('PIN skiftet 🔒');}
+        else{ui.overlay=null;ui.parentId=o.parentId;ui.parentTab='opgaver';ui.screen='parent';render();toast('PIN oprettet 🔒');}
+      } else {o.error='PIN’erne matcher ikke';o.pin1='';o.pin2='';o.step='pin1';renderOverlay();shakeBox('setpinBox');}
+    }
+  }
+}
 function enterPin(d){
   const o=ui.overlay;
   if(d==='del'){o.entered=o.entered.slice(0,-1);setDots('pinDots',o.entered.length);return;}
@@ -902,6 +953,16 @@ function confirmAddChild(){
 }
 function askDelKid(id){ui.overlay={type:'delkid',kidId:id};renderOverlay();}
 function confirmDelKid(){const id=ui.overlay.kidId;state.kids=state.kids.filter(k=>k.id!==id);if(ui.currentKidId===id)ui.currentKidId=null;ui.overlay=null;save();render();}
+function askDelParent(pid){ui.overlay={type:'delparent',parentId:pid};renderOverlay();}
+function confirmDelParent(){
+  const id=ui.overlay.parentId; const p=state.parents.find(x=>x.id===id); if(!p){closeOverlay();return;}
+  const email=(p.email||'').toLowerCase(); const fLC=(state.founderEmail||'').toLowerCase();
+  if(email&&email===fLC){toast('Ejeren kan ikke fjernes');closeOverlay();return;}
+  state.parents=state.parents.filter(x=>x.id!==id);
+  if(email)state.allowedEmails=(state.allowedEmails||[]).filter(e=>(e||'').toLowerCase()!==email);
+  if(ui.parentId===id)ui.parentId=(state.parents[0]||{}).id||null;
+  ui.overlay=null; save(); render(); toast('Forælder fjernet');
+}
 
 function askRedeem(kind,idOrVal){
   const k=currentKid(); let item;
