@@ -310,7 +310,7 @@ const REWARD_EMOJIS=['🎬','🍕','🍦','📱','🛌','🎮','🍭','🎡','�
 /* ===== State ===== */
 const KEY='pling_v1';
 let state=normalize(load());
-let ui={screen:'loading',shownPoints:0,overlay:null,tasksOpen:true,parentTab:'opgaver',editId:null,editRewardId:null,parentId:null,currentKidId:null,authMode:'login',authError:'',familyId:null,cloudMsg:'',invited:false,kidDevice:null,kidPair:null};
+let ui={screen:'loading',shownPoints:0,overlay:null,tasksOpen:true,optOpen:true,parentTab:'opgaver',editId:null,editRewardId:null,parentId:null,currentKidId:null,authMode:'login',authError:'',familyId:null,cloudMsg:'',invited:false,kidDevice:null,kidPair:null};
 let cloudUser=null, lastWritten=null, pendingSignupName='';
 var pushSessionStart=Date.now(), notifPushed={}, frameScale=1;
 try{if(/[?&]family=/.test(location.search)){ui.authMode='signup';ui.invited=true;}}catch(e){}
@@ -324,7 +324,7 @@ function normalize(s){
   s.tasks.forEach(t=>{if(t.assignMode==null){t.assignMode='age';t.minAge=2;t.maxAge=18;} if(t.kidIds==null)t.kidIds=[]; if(t.weekdays==null)t.weekdays=[];});
   s.rewards.forEach(r=>{if(r.reset==null)r.reset='daily'; if(r.assignMode==null){r.assignMode='age';r.minAge=2;r.maxAge=18;} if(r.kidIds==null)r.kidIds=[];});
   s.parents.forEach(p=>{if(p.bodyColor==null)p.bodyColor='#B8C7F0'; if(p.hat==null)p.hat='👓'; if(p.pants==null)p.pants='';});
-  s.kids.forEach(k=>{if(k.redeemed==null)k.redeemed={};});
+  s.kids.forEach(k=>{if(k.redeemed==null)k.redeemed={}; if(k.completedDay==null)k.completedDay={};});
   return s;
 }
 function load(){ try{const v=localStorage.getItem(KEY); return v?JSON.parse(v):null;}catch(e){return null;} }
@@ -396,6 +396,11 @@ function weekdayLabel(t){const w=t.weekdays||[];if(!w.length)return 'Vælg dage'
 function taskDone(kid,t){return kid.completed && kid.completed[t.id]===periodKey(t.repeat);}
 function bonusTaskList(kid){return tasksForKidToday(kid).filter(function(t){return t.optional!==true && (t.repeat==='daily'||t.repeat==='weekdays');});}
 function allDone(kid){const a=bonusTaskList(kid);return a.length>0 && a.every(t=>taskDone(kid,t));}
+function taskVisibleToday(kid,t){
+  if(t.repeat==='daily'||t.repeat==='weekdays')return true;      // faste dag-opgaver: altid synlige
+  if(!taskDone(kid,t))return true;                              // ikke løst endnu -> vis
+  return (kid.completedDay&&kid.completedDay[t.id])===todayKey(); // løst i dag -> vis (til validering); løst før -> skjul til næste periode
+}
 function redeemedNow(k,r){return (k.redeemed||{})[r.id]===rewardPeriodKey(r.reset||'daily');}
 function ownedList(k,kind){return kind==='color'?k.ownedColors:kind==='hat'?k.ownedHats:k.ownedPants;}
 function esc(s){return (s==null?'':''+s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
@@ -689,16 +694,30 @@ function pickerScreen(){
     <div class="plabel">Forældre</div><div class="prow">${parents}</div>
   </div>`;
 }
-function homeScreen(){
-  const k=currentKid(); if(!k){ui.screen='picker';return pickerScreen();}
-  const tasks=[...tasksForKidToday(k)].sort((a,b)=>(taskDone(k,a)?1:0)-(taskDone(k,b)?1:0));
-  const rows=tasks.map(t=>{const d=taskDone(k,t);const fr=t.repeat==='weekdays'?weekdayLabel(t):(REPEAT_LABEL[t.repeat]||'');return `
-    <div class="task ${d?'done':''}" onclick="toggleTask('${t.id}',event)">
-      <div class="ic" style="background:${['#EFE9FF','#E3FBF6','#FFEDE3','#FFF6D8','#FFE8F1','#E7F3FF'][state.tasks.indexOf(t)%6]}">${t.icon}</div>
+function taskRow(k,t){
+  const d=taskDone(k,t); const fr=t.repeat==='weekdays'?weekdayLabel(t):(REPEAT_LABEL[t.repeat]||'');
+  const bg=['#EFE9FF','#E3FBF6','#FFEDE3','#FFF6D8','#FFE8F1','#E7F3FF'][Math.max(0,state.tasks.indexOf(t))%6];
+  return `<div class="task ${d?'done':''}" onclick="toggleTask('${t.id}',event)">
+      <div class="ic" style="background:${bg}">${t.icon}</div>
       <div class="tx"><div class="tt">${esc(t.title)||'Opgave'}</div><div class="fr">${fr}</div></div>
       <div class="pts">+${t.points}</div><div class="check">${d?'✓':''}</div>
-    </div>`;}).join('');
-  const gold=(k.dailyBonusClaimed===todayKey())?`<div class="goldbar">🌟 Du har klaret hele dagen! +15 bonuspoint</div>`:'';
+    </div>`;
+}
+function homeScreen(){
+  const k=currentKid(); if(!k){ui.screen='picker';return pickerScreen();}
+  const byDone=(a,b)=>(taskDone(k,a)?1:0)-(taskDone(k,b)?1:0);
+  const visible=tasksForKidToday(k).filter(t=>taskVisibleToday(k,t));
+  const must=visible.filter(t=>t.optional!==true).sort(byDone);
+  const may=visible.filter(t=>t.optional===true).sort(byDone);
+  const mustRows=must.map(t=>taskRow(k,t)).join('');
+  const mayRows=may.map(t=>taskRow(k,t)).join('');
+  const bl=bonusTaskList(k); const remaining=bl.filter(t=>!taskDone(k,t)).length;
+  const claimed=(k.dailyBonusClaimed===todayKey());
+  const gold = claimed
+    ? `<div class="goldbar">🌟 Du har klaret alle skal-opgaver! +15 bonuspoint</div>`
+    : (bl.length>0 && remaining>0)
+      ? `<div class="goldbar" style="background:linear-gradient(120deg,#EFE9FF,#DDD0FF);border-color:#C9B6FF;color:#5E35D6">⭐ Kun ${remaining} ${remaining===1?'opgave':'opgaver'} mere, så får du 15 bonuspoint!</div>`
+      : '';
   const msg=k.message?`<div class="msgbanner">💬 <div><b>${esc(k.message.from)}:</b> ${esc(k.message.text)}</div><span class="x" onclick="dismissMsg()">✕</span></div>`:'';
   return `<div class="scr">
     ${bannerHTML('#7C4DFF','#B4FF3C')}
@@ -712,9 +731,13 @@ function homeScreen(){
       <div class="today">I dag er det ${DAYS[new Date().getDay()]} ☀️</div>
       ${msg}${gold}
       <div class="sec">
-        <div class="sec-h" onclick="toggleTasks()"><h3>Opgaver</h3><span class="cv">${ui.tasksOpen?'▾':'▸'}</span></div>
-        <div style="display:${ui.tasksOpen?'block':'none'}">${rows||'<div class="hint" style="padding:16px">Ingen opgaver til dig i dag 🎉</div>'}</div>
+        <div class="sec-h" onclick="toggleTasks()"><h3>Skal-opgaver</h3><span class="cv">${ui.tasksOpen?'▾':'▸'}</span></div>
+        <div style="display:${ui.tasksOpen?'block':'none'}">${mustRows||'<div class="hint" style="padding:16px">Ingen skal-opgaver i dag 🎉</div>'}</div>
       </div>
+      ${may.length?`<div class="sec">
+        <div class="sec-h" onclick="toggleOpt()"><h3>Må-opgaver <span style="font-weight:400;color:var(--muted3);font-size:12px">· frivillige</span></h3><span class="cv">${ui.optOpen?'▾':'▸'}</span></div>
+        <div style="display:${ui.optOpen?'block':'none'}">${mayRows}</div>
+      </div>`:''}
       <div class="hint">Tryk på en opgave for at løse den ✨ — tryk igen for at fortryde</div>
     </div>
     ${navHTML('home')}
@@ -1052,6 +1075,7 @@ function go(screen){
 }
 function openKid(id){ui.currentKidId=id;ui.shownPoints=(currentKid()||{}).points||0;ui.screen='home';render();}
 function toggleTasks(){ui.tasksOpen=!ui.tasksOpen;render();}
+function toggleOpt(){ui.optOpen=!ui.optOpen;render();}
 function dismissMsg(){const k=currentKid();if(k){k.message=null;save();render();}}
 
 function toggleTask(id,ev){
@@ -1061,12 +1085,13 @@ function toggleTask(id,ev){
   const x=ev?ev.clientX:0,y=ev?ev.clientY:0; const from=k.points;
   if(!wasDone){
     k.completed[id]=pk; k.points+=t.points; k.totalEarned=(k.totalEarned||0)+t.points;
+    if(!k.completedDay)k.completedDay={}; if(t.repeat!=='daily'&&t.repeat!=='weekdays')k.completedDay[id]=todayKey();
     save(); render(); countTo(from,k.points); floatText(x,y,'+'+t.points,true); confettiAt(x,y);
     if(allDone(k)&&k.dailyBonusClaimed!==todayKey()){
       setTimeout(function(){var kk=currentKid();if(!kk||kk.dailyBonusClaimed===todayKey()||!allDone(kk))return;var f2=kk.points;kk.dailyBonusClaimed=todayKey();kk.points+=15;kk.totalEarned=(kk.totalEarned||0)+15;save();render();countTo(f2,kk.points);confettiBurstCenter();toast('🌟 Hele dagen klaret! +15 bonus');},650);
     }
   }else{
-    delete k.completed[id]; k.points=Math.max(0,k.points-t.points); k.totalEarned=Math.max(0,(k.totalEarned||0)-t.points);
+    delete k.completed[id]; if(k.completedDay)delete k.completedDay[id]; k.points=Math.max(0,k.points-t.points); k.totalEarned=Math.max(0,(k.totalEarned||0)-t.points);
     let msg='Opgave fortrudt';
     if(k.dailyBonusClaimed===todayKey()&&!allDone(k)){k.dailyBonusClaimed=null;k.points=Math.max(0,k.points-15);k.totalEarned=Math.max(0,(k.totalEarned||0)-15);msg='Fortrudt — bonus rullet tilbage (−15)';}
     save(); render(); countTo(from,k.points); floatText(x,y,'−'+t.points,false); toast(msg);
